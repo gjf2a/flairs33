@@ -17,11 +17,11 @@ impl ConfusionMatrix {
         }
     }
 
-    pub fn record(&mut self, test_img: &LabeledImage, classification: u8) {
-        if classification == test_img.get_label() {
-            self.label_2_right.bump(classification);
+    pub fn record(&mut self, img_label: u8, classification: u8) {
+        if classification == img_label {
+            self.label_2_right.bump(img_label);
         } else {
-            self.label_2_wrong.bump(classification);
+            self.label_2_wrong.bump(img_label);
         }
     }
 
@@ -50,8 +50,41 @@ pub trait Classifier {
     fn test(&self, testing_images: &Vec<LabeledImage>) -> ConfusionMatrix {
         let mut result = ConfusionMatrix::new();
         for test_img in testing_images {
-            result.record(test_img, self.classify(test_img));
+            result.record(test_img.get_label(), self.classify(test_img));
         }
         result
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_matrix() {
+        let mut matrix = ConfusionMatrix::new();
+
+        let one_ok = 6;
+        let one_er = 4;
+        let two_ok = 7;
+        let two_er = 3;
+
+        for _ in 0..one_ok {
+            matrix.record(1, 1);
+        }
+
+        for _ in 0..one_er {
+            matrix.record(1, 2);
+        }
+
+        for _ in 0..two_ok {
+            matrix.record(2, 2);
+        }
+
+        for _ in 0..two_er {
+            matrix.record(2, 1);
+        }
+
+        assert_eq!(format!("1: {} correct, {} incorrect\n2: {} correct, {} incorrect\n", one_ok, one_er, two_ok, two_er), matrix.to_string());
     }
 }

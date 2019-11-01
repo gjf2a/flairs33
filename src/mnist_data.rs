@@ -1,6 +1,7 @@
 use std::fs;
 use std::io;
 use std::io::Read;
+use crate::hash_histogram::HashHistogram;
 
 pub const IMAGE_DIMENSION: usize = 28;
 pub const IMAGE_BYTES: usize = IMAGE_DIMENSION * IMAGE_DIMENSION;
@@ -47,6 +48,7 @@ pub fn discard(items: &Vec<LabeledImage>, shrink: usize) -> Vec<LabeledImage> {
 }
 
 fn read_label_file(label_file_name: &str) -> io::Result<Vec<u8>> {
+    //let mut all_labels = HashHistogram::new();
     let fin = fs::File::open(label_file_name)?;
     let mut bytes: Vec<u8> = Vec::new();
     let mut header_bytes_left = 8;
@@ -54,9 +56,12 @@ fn read_label_file(label_file_name: &str) -> io::Result<Vec<u8>> {
         if header_bytes_left > 0 {
             header_bytes_left -= 1;
         } else {
-            bytes.push(b?);
+            let b = b?;
+            bytes.push(b);
+            //all_labels.bump(b);
         }
     }
+    //println!("all_labels: {}", all_labels);
     Ok(bytes)
 }
 
@@ -71,7 +76,7 @@ fn read_image_file(image_file_name: &str, labels: &Vec<u8>) -> io::Result<Vec<La
         } else {
             buffer.push(b?);
             if buffer.len() == IMAGE_BYTES {
-                images.push(LabeledImage::new(&buffer, labels[buffer.len()]));
+                images.push(LabeledImage::new(&buffer, labels[images.len()]));
                 buffer.clear();
             }
         }

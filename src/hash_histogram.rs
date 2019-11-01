@@ -1,6 +1,7 @@
 use std::collections::HashMap;
 use std::collections::HashSet;
 use std::hash::Hash;
+use std::fmt;
 
 pub struct HashHistogram<K: Hash + Eq + Copy> {
     map: HashMap<K,usize>
@@ -28,5 +29,45 @@ impl<K: Hash + Eq + Copy> HashHistogram<K> {
         *(self.map.iter()
             .max_by_key(|entry| entry.1)
             .unwrap().0)
+    }
+}
+
+impl<K: Hash + Eq + Copy + fmt::Display> fmt::Display for HashHistogram<K> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        for label in self.all_labels() {
+            write!(f, "{}:{}; ", label, self.get(label))?;
+        }
+        Ok(())
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_hist() {
+        let mut hist = HashHistogram::new();
+        let zeros = 10;
+        let ones = 15;
+        let twos = 20;
+
+        for _ in 0..zeros {
+            hist.bump(0);
+        }
+
+        for _ in 0..ones {
+            hist.bump(1);
+        }
+
+        for _ in 0..twos {
+            hist.bump(2);
+        }
+
+        assert_eq!(3, hist.all_labels().len());
+        assert_eq!(zeros, hist.get(0));
+        assert_eq!(ones, hist.get(1));
+        assert_eq!(twos, hist.get(2));
+        assert_eq!(2, hist.mode());
     }
 }
