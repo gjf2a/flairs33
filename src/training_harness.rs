@@ -1,5 +1,8 @@
 use crate::mnist_data::LabeledImage;
 use crate::hash_histogram::HashHistogram;
+use std::fmt;
+use std::fmt::Formatter;
+use std::collections::HashSet;
 
 pub struct ConfusionMatrix {
     label_2_right: HashHistogram<u8>,
@@ -20,6 +23,22 @@ impl ConfusionMatrix {
         } else {
             self.label_2_wrong.bump(classification);
         }
+    }
+
+    pub fn all_labels(&self) -> HashSet<u8> {
+        self.label_2_wrong.all_labels()
+            .union(&self.label_2_right.all_labels())
+            .map(|label| *label)
+            .collect()
+    }
+}
+
+impl fmt::Display for ConfusionMatrix {
+    fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
+        for label in self.all_labels() {
+            writeln!(f, "{}: {} correct, {} incorrect", label, self.label_2_right.get(label), self.label_2_wrong.get(label))?;
+        }
+        Ok(())
     }
 }
 

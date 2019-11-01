@@ -36,6 +36,16 @@ pub fn init_from_files(image_file_name: &str, label_file_name: &str) -> io::Resu
     read_image_file(image_file_name, &bytes)
 }
 
+pub fn discard(items: &Vec<LabeledImage>, shrink: usize) -> Vec<LabeledImage> {
+    let mut result = Vec::new();
+    for i in 0..items.len() {
+        if i % shrink == 0 {
+            result.push(items[i])
+        }
+    }
+    result
+}
+
 fn read_label_file(label_file_name: &str) -> io::Result<Vec<u8>> {
     let fin = fs::File::open(label_file_name)?;
     let mut bytes: Vec<u8> = Vec::new();

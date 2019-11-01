@@ -6,7 +6,8 @@ pub fn euclidean_distance(img1: &LabeledImage, img2: &LabeledImage) -> R64 {
 
     for y in 0..IMAGE_DIMENSION {
         for x in 0..IMAGE_DIMENSION {
-            distance += (img1.value(x, y) - img2.value(x, y)).pow(2) as f64;
+            let difference = img1.value(x, y) as f64 - img2.value(x, y) as f64;
+            distance += difference.powf(2.0);
         }
     }
 
