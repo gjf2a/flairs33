@@ -1,4 +1,4 @@
-use crate::mnist_data::LabeledImage;
+use crate::mnist_data::Image;
 use crate::hash_histogram::HashHistogram;
 use std::fmt;
 use std::fmt::Formatter;
@@ -31,11 +31,19 @@ impl ConfusionMatrix {
             .map(|label| *label)
             .collect()
     }
+
+    pub fn error_rate(&self) -> f64 {
+        let total_right = self.label_2_right.total_count() as f64;
+        let total_wrong = self.label_2_wrong.total_count() as f64;
+        total_wrong / (total_right + total_wrong)
+    }
 }
 
 impl fmt::Display for ConfusionMatrix {
     fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
-        for label in self.all_labels() {
+        let mut ordered_labels: Vec<u8> = self.all_labels().iter().map(|n| *n).collect();
+        ordered_labels.sort_unstable();
+        for label in ordered_labels {
             writeln!(f, "{}: {} correct, {} incorrect", label, self.label_2_right.get(label), self.label_2_wrong.get(label))?;
         }
         Ok(())
@@ -43,14 +51,14 @@ impl fmt::Display for ConfusionMatrix {
 }
 
 pub trait Classifier {
-    fn train(&mut self, training_images: &Vec<LabeledImage>);
+    fn train(&mut self, training_images: &Vec<(u8,Image)>);
 
-    fn classify(&self, example: &LabeledImage) -> u8;
+    fn classify(&self, example: &Image) -> u8;
 
-    fn test(&self, testing_images: &Vec<LabeledImage>) -> ConfusionMatrix {
+    fn test(&self, testing_images: &Vec<(u8,Image)>) -> ConfusionMatrix {
         let mut result = ConfusionMatrix::new();
         for test_img in testing_images {
-            result.record(test_img.get_label(), self.classify(test_img));
+            result.record(test_img.0, self.classify(&test_img.1));
         }
         result
     }

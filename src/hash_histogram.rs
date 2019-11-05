@@ -30,6 +30,10 @@ impl<K: Hash + Eq + Copy> HashHistogram<K> {
             .max_by_key(|entry| entry.1)
             .unwrap().0)
     }
+
+    pub fn total_count(&self) -> usize {
+        self.map.iter().map(|entry| entry.1).sum()
+    }
 }
 
 impl<K: Hash + Eq + Copy + fmt::Display> fmt::Display for HashHistogram<K> {
@@ -69,5 +73,6 @@ mod tests {
         assert_eq!(ones, hist.get(1));
         assert_eq!(twos, hist.get(2));
         assert_eq!(2, hist.mode());
+        assert_eq!(zeros + ones + twos, hist.total_count());
     }
 }
