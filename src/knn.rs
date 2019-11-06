@@ -1,5 +1,4 @@
 extern crate decorum;
-use crate::mnist_data::Image;
 use crate::training_harness::Classifier;
 use crate::hash_histogram::HashHistogram;
 use self::decorum::R64;
@@ -23,7 +22,7 @@ impl<I, F: Fn(&I,&I) -> R64> Knn<I,F> {
 impl<I: Clone, F: Fn(&I,&I) -> R64> Classifier<I> for Knn<I,F> {
     fn train(&mut self, training_images: &Vec<(u8,I)>) {
         for img in training_images {
-            //self.add_example(img.clone()); // Flagged as type error by IDE, but compiles fine.
+            // TODO: Bug report: self.add_example(img.clone()); // Flagged as type error by IDE, but compiles fine.
             self.add_example((img.0, img.1.clone()));
         }
     }

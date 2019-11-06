@@ -1,7 +1,6 @@
 use std::fs;
 use std::io;
 use std::io::Read;
-use delegate::delegate;
 
 pub const IMAGE_DIMENSION: usize = 28;
 pub const IMAGE_BYTES: usize = IMAGE_DIMENSION * IMAGE_DIMENSION;

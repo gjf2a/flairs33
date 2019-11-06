@@ -1,4 +1,3 @@
-use crate::mnist_data::Image;
 use crate::hash_histogram::HashHistogram;
 use std::fmt;
 use std::fmt::Formatter;
