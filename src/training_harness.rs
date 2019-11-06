@@ -50,12 +50,12 @@ impl fmt::Display for ConfusionMatrix {
     }
 }
 
-pub trait Classifier {
-    fn train(&mut self, training_images: &Vec<(u8,Image)>);
+pub trait Classifier<I> {
+    fn train(&mut self, training_images: &Vec<(u8,I)>);
 
-    fn classify(&self, example: &Image) -> u8;
+    fn classify(&self, example: &I) -> u8;
 
-    fn test(&self, testing_images: &Vec<(u8,Image)>) -> ConfusionMatrix {
+    fn test(&self, testing_images: &Vec<(u8,I)>) -> ConfusionMatrix {
         let mut result = ConfusionMatrix::new();
         for test_img in testing_images {
             result.record(test_img.0, self.classify(&test_img.1));
