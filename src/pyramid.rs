@@ -31,6 +31,9 @@ pub fn pyramid_distance(img1: &Pyramid, img2: &Pyramid) -> R64 {
 
     let mut total: R64 = R64::from_inner(0.0);
     for i in 0..img1.levels() {
+        // With the multiplier, it is significantly worse than the regular Euclidean.
+        // Without the multiplier, the additional levels become so insignificant that
+        // performance is identical.
         let multiplier: R64 = R64::from_inner(REDUCTION.pow(2*i as u32) as f64);
         total += multiplier * euclidean_distance(&img1.images[i], &img2.images[i]);
     }
