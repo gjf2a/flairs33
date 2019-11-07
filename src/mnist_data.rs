@@ -35,6 +35,15 @@ impl Image {
         self.pixels.len()
     }
 
+    pub fn permuted(&self, permutation: &Vec<usize>) -> Image {
+        assert_eq!(self.pixels.len(), permutation.len());
+        let mut result = Image::new();
+        for index in permutation {
+            result.add(self.pixels[*index]);
+        }
+        result
+    }
+
     pub fn shrunken(&self, shrink: usize) -> Image {
         let mut result = Image::new();
         let target_side = self.side() / shrink;
