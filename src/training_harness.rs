@@ -56,8 +56,14 @@ pub trait Classifier<I> {
 
     fn test(&self, testing_images: &Vec<(u8,I)>) -> ConfusionMatrix {
         let mut result = ConfusionMatrix::new();
+        let mut count = 0;
+        let twentieth = testing_images.len() / 20;
         for test_img in testing_images {
             result.record(test_img.0, self.classify(&test_img.1));
+            count += 1;
+            if count % twentieth == 0 {
+                println!("{}% tested", count * 5);
+            }
         }
         result
     }

@@ -6,6 +6,7 @@ mod euclidean_distance;
 mod pyramid;
 mod permutation;
 mod brief;
+mod kmeans;
 
 use std::io;
 use crate::training_harness::Classifier;
@@ -111,11 +112,11 @@ fn permuted_data_set(permutation: &Vec<usize>, data: &Vec<(u8,Image)>) -> Vec<(u
 
 fn build_and_test_model<I: Clone, C: Fn(&Vec<(u8,Image)>) -> Vec<(u8,I)>, D: Fn(&I,&I) -> R64>
 (label: &str, training: &Vec<(u8, Image)>, testing: &Vec<(u8,Image)>, conversion: C, distance: D) {
-    timed_op!(format!("Converting training images to {}", label),
+    timed_op!(format!("converting training images to {}", label),
         let training_images = conversion(training)
     );
 
-    timed_op!(format!("Converting testing images to {}", label),
+    timed_op!(format!("converting testing images to {}", label),
         let testing_images = conversion(testing)
     );
 

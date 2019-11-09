@@ -3,14 +3,14 @@ use crate::training_harness::Classifier;
 use crate::hash_histogram::HashHistogram;
 use self::decorum::R64;
 
-pub struct Knn<I, F: Fn(&I,&I) -> R64> {
+pub struct Knn<I, D: Fn(&I,&I) -> R64> {
     k: usize,
     images: Vec<(u8,I)>,
-    distance: F,
+    distance: D,
 }
 
-impl<I, F: Fn(&I,&I) -> R64> Knn<I,F> {
-    pub fn new(k: usize, distance: F) -> Knn<I,F> {
+impl<I, D: Fn(&I,&I) -> R64> Knn<I, D> {
+    pub fn new(k: usize, distance: D) -> Knn<I, D> {
         Knn {k: k, images: Vec::new(), distance: distance}
     }
 
@@ -19,7 +19,7 @@ impl<I, F: Fn(&I,&I) -> R64> Knn<I,F> {
     }
 }
 
-impl<I: Clone, F: Fn(&I,&I) -> R64> Classifier<I> for Knn<I,F> {
+impl<I: Clone, D: Fn(&I,&I) -> R64> Classifier<I> for Knn<I, D> {
     fn train(&mut self, training_images: &Vec<(u8,I)>) {
         for img in training_images {
             // TODO: Bug report: self.add_example(img.clone()); // Flagged as type error by IDE, but compiles fine.
