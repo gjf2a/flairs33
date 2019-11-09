@@ -1,6 +1,5 @@
 use crate::mnist_data::Image;
 use decorum::R64;
-use bitvec::prelude::*;
 use rand_distr::{Normal, Distribution};
 use rand::prelude::ThreadRng;
 
@@ -32,7 +31,15 @@ impl Descriptor {
         result
     }
 
-    pub fn apply_to(&self, img: &Image) -> BitVec<BigEndian,u8> {
+    pub fn width(&self) -> usize {
+        self.width
+    }
+
+    pub fn height(&self) -> usize {
+        self.height
+    }
+
+    pub fn apply_to(&self, img: &Image) -> Vec<bool> {
         assert_eq!(img.side(), self.width());
         assert_eq!(img.side(), self.height());
 
@@ -41,41 +48,16 @@ impl Descriptor {
             .collect()
     }
 
-    pub fn images_2_brief_vecs(&self, images: &Vec<(u8,Image)>) -> Vec<(u8,BitVec<BigEndian,u8>)> {
+    pub fn images_2_brief_vecs(&self, images: &Vec<(u8,Image)>) -> Vec<(u8,Vec<bool>)> {
         images.iter()
             .map(|(label, img)| (*label, self.apply_to(img)))
             .collect()
     }
-
-    pub fn width(&self) -> usize {
-        self.width
-    }
-
-    pub fn height(&self) -> usize {
-        self.height
-    }
 }
 
-pub fn bitvec_distance(bv1: &BitVec<BigEndian,u8>, bv2: &BitVec<BigEndian,u8>) -> R64 {
+pub fn bitvec_distance(bv1: &Vec<bool>, bv2: &Vec<bool>) -> R64 {
     assert_eq!(bv1.len(), bv2.len());
-    // Version 3. Purely functional. Same speed as version 2.
     R64::from_inner((0..bv1.len())
-        .map(|i| bv1[i] != bv2[i])
-        .filter(|b| *b)
+        .filter(|i| bv1[*i] != bv2[*i])
         .count() as f64)
-    /*
-    // Version 2. Works similar to version 1, but much faster.
-    let mut count = 0;
-    for i in 0..bv1.len() {
-        if bv1[i] != bv2[i] {count += 1;}
-    }
-    R64::from_inner(count as f64)
-    */
-
-    /*
-    // Version 1. Slow!!!
-    let xor = bv1.clone() ^ bv2.clone();
-    R64::from_inner(xor.iter().filter(|b| *b).count() as f64)
-    */
 }
-
