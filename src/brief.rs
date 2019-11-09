@@ -2,6 +2,7 @@ use crate::mnist_data::Image;
 use decorum::R64;
 use bitvec::prelude::*;
 use rand_distr::{Normal, Distribution};
+use rand::prelude::ThreadRng;
 
 pub struct Descriptor {
     pairs: Vec<((usize,usize),(usize,usize))>,
@@ -9,15 +10,24 @@ pub struct Descriptor {
     height: usize
 }
 
+fn constrained_random(dist: &Normal<f64>, rng: &mut ThreadRng, max: usize) -> usize {
+    let mut value = dist.sample(rng);
+    value = value.max(0 as f64);
+    value = value.min((max - 1) as f64);
+    value as usize
+}
+
 impl Descriptor {
     pub fn new(n: usize, width: usize, height: usize) -> Descriptor {
         let mut rng = rand::thread_rng();
-        let x_dist = Normal::new((width/2) as f64, (width/2) as f64).unwrap();
-        let y_dist = Normal::new((height/2) as f64, (height/2) as f64).unwrap();
+        let x_dist = Normal::new((width/2) as f64, (width/6) as f64).unwrap();
+        let y_dist = Normal::new((height/2) as f64, (height/6) as f64).unwrap();
         let mut result = Descriptor {pairs: Vec::new(), width: width, height: height};
         for _ in 0..n {
-            result.pairs.push(((x_dist.sample(&mut rng) as usize, y_dist.sample(&mut rng) as usize),
-                              (x_dist.sample(&mut rng) as usize, y_dist.sample(&mut rng) as usize)));
+            result.pairs.push(((constrained_random(&x_dist, &mut rng, width),
+                                constrained_random(&y_dist, &mut rng, height)),
+                              (constrained_random(&x_dist, &mut rng, width),
+                                constrained_random(&y_dist, &mut rng, height))));
         }
         result
     }
@@ -47,6 +57,25 @@ impl Descriptor {
 }
 
 pub fn bitvec_distance(bv1: &BitVec<BigEndian,u8>, bv2: &BitVec<BigEndian,u8>) -> R64 {
+    assert_eq!(bv1.len(), bv2.len());
+    // Version 3. Purely functional. Same speed as version 2.
+    R64::from_inner((0..bv1.len())
+        .map(|i| bv1[i] != bv2[i])
+        .filter(|b| *b)
+        .count() as f64)
+    /*
+    // Version 2. Works similar to version 1, but much faster.
+    let mut count = 0;
+    for i in 0..bv1.len() {
+        if bv1[i] != bv2[i] {count += 1;}
+    }
+    R64::from_inner(count as f64)
+    */
+
+    /*
+    // Version 1. Slow!!!
     let xor = bv1.clone() ^ bv2.clone();
     R64::from_inner(xor.iter().filter(|b| *b).count() as f64)
+    */
 }
+
