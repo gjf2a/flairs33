@@ -7,6 +7,7 @@ mod pyramid;
 mod permutation;
 mod brief;
 mod kmeans;
+mod convolutional;
 
 use std::io;
 use crate::training_harness::Classifier;

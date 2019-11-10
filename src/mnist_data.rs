@@ -27,6 +27,10 @@ impl Image {
         self.pixels[y * self.side_size + x]
     }
 
+    pub fn get_by_index(&self, i: usize) -> u8 {
+        self.pixels[i]
+    }
+
     pub fn side(&self) -> usize {
         self.side_size
     }
