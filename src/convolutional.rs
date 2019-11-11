@@ -1,10 +1,11 @@
 // Write a method that takes an Image and produces another Image with k classes for the pixel values
 // Write a distance metric for that method.
 
-use crate::mnist_data::{Image, ImageIterator};
+use crate::mnist_data::{Image, ImageIterator, image_mean};
 use crate::kmeans::Kmeans;
 use crate::kmeans;
 use decorum::R64;
+use crate::euclidean_distance::euclidean_distance;
 
 // Here's the approach:
 // - Use k-means to find k convolution filters. (Imagine using 3x3.)
@@ -28,7 +29,9 @@ pub fn find_filters_from(img1: &Image, img2: &Image, num_filters: usize, kernel_
     let mut raw_filters: Vec<Image> = Vec::new();
     add_kernels_from_to(img1, &mut raw_filters, kernel_size);
     add_kernels_from_to(img2, &mut raw_filters, kernel_size);
-    raw_filters
+
+    let filter_means = kmeans::Kmeans::new(num_filters, &raw_filters, euclidean_distance, image_mean);
+    filter_means.copy_means()
 }
 
 fn add_kernels_from_to(img: &Image, raw_filters: &mut Vec<Image>, kernel_size: usize) {

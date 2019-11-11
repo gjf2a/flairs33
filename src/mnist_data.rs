@@ -81,6 +81,31 @@ impl Image {
     }
 }
 
+impl PartialEq for Image {
+    fn eq(&self, other: &Self) -> bool {
+        self.side_size == other.side_size && self.pixels.len() == other.pixels.len() && (0..self.pixels.len()).all(|i| self.pixels[i] == other.pixels[i])
+    }
+}
+
+impl Eq for Image {}
+
+pub fn image_mean(images: &Vec<Image>) -> Image {
+    assert!(images.len() > 0);
+    assert!(images.iter().all(|img| img.pixels.len() == images[0].pixels.len()));
+    let mut sums: Vec<usize> = (0..images[0].pixels.len()).map(|_| 0).collect();
+    for image in images.iter() {
+        for p in 0..image.pixels.len() {
+            sums[p] += image.pixels[p] as usize;
+        }
+    }
+
+    let mut result = Image::new();
+    for sum in sums {
+        result.add((sum / images.len()) as u8);
+    }
+    result
+}
+
 pub struct ImageIterator {
     width: usize,
     height: usize,
