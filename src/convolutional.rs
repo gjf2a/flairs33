@@ -25,41 +25,57 @@ use crate::euclidean_distance::euclidean_distance;
 // - Imagine 8 filters
 // - 28x28, 8 x 14x14, 64 x 7x7
 
+pub fn project_through(src: &Image, kernels: &Vec<Image>) -> Vec<Image> {
+    let mut distances: Vec<Vec<R64>> = (0..kernels.len()).map(|_| Vec::new()).collect();
+    for (x, y) in src.x_y_iter() {
+        for k in 0..kernels.len() {
+            distances[k].push(apply_to(&kernels[k], src, x, y));
+        }
+    }
+
+    let min = min_across(&distances);
+    let max = max_across(&distances);
+
+    let mut result: Vec<Image> = (0..kernels.len()).map(|_| Image::new()).collect();
+    for k in 0..kernels.len() {
+        for distance in distances[k].iter() {
+            result[k].add(scale(*distance, min, max))
+        }
+    }
+    result
+}
+
+pub fn apply_to(kernel: &Image, target: &Image, x: usize, y: usize) -> R64 {
+    let offset = kernel.side() / 2;
+    let mut distance_sum: R64 = R64::from_inner(0.0);
+    for (kx, ky) in kernel.x_y_iter() {
+        distance_sum += euclidean_distance(&kernel, &target.subimage(x, y, kernel.side()))
+    }
+    distance_sum
+}
+
+pub fn max_across(distances: &Vec<Vec<R64>>) -> R64 {
+    *(distances.iter().filter_map(|v| v.iter().max()).max().unwrap())
+}
+
+// TODO: Again, copy-and-paste for now, refactor later...
+pub fn min_across(distances: &Vec<Vec<R64>>) -> R64 {
+    *(distances.iter().filter_map(|v| v.iter().min()).min().unwrap())
+}
+
+pub fn scale(value: R64, min: R64, max: R64) -> u8 {
+    let float_scale = 1.0 - ((value - min) / (max - min)).into_inner();
+    (float_scale * std::u8::MAX as f64) as u8
+}
+
 pub fn find_filters_from(img1: &Image, img2: &Image, num_filters: usize, kernel_size: usize) -> Vec<Image> {
     let mut raw_filters: Vec<Image> = Vec::new();
     add_kernels_from_to(img1, &mut raw_filters, kernel_size);
     add_kernels_from_to(img2, &mut raw_filters, kernel_size);
-
-    let filter_means = kmeans::Kmeans::new(num_filters, &raw_filters, euclidean_distance, image_mean);
-    filter_means.copy_means()
+    kmeans::Kmeans::new(num_filters, &raw_filters, euclidean_distance, image_mean).move_means()
 }
 
 fn add_kernels_from_to(img: &Image, raw_filters: &mut Vec<Image>, kernel_size: usize) {
-    let iter = img.x_y_iter();
-    let offset = kernel_size / 2;
-    iter.filter_map(|(x, y)| remix_bounds(kernel_bounds(x, kernel_size, img.side()), kernel_bounds(y, kernel_size, img.side())))
-        .for_each(|((x1, y1), (x2, y2))| {
-            raw_filters.push(img.subimage(x1, y1, x2, y2));
-        });
-}
-
-pub fn kernel_bounds(value: usize, kernel_size: usize, max: usize) -> Option<(usize,usize)> {
-    let offset = kernel_size / 2;
-    if value >= offset {
-        let lo = value - offset;
-        let hi = lo + kernel_size - 1;
-        if hi < max {
-            return Some((lo, hi))
-        }
-    }
-    None
-}
-
-pub fn remix_bounds(x: Option<(usize,usize)>, y: Option<(usize,usize)>) -> Option<((usize,usize),(usize,usize))> {
-    if let Some((x1, x2)) = x {
-        if let Some((y1, y2)) = y {
-            return Some(((x1, y1),(x2, y2)))
-        }
-    }
-    None
+    img.x_y_iter().
+        for_each(|(x, y)| raw_filters.push(img.subimage(x, y, kernel_size)));
 }

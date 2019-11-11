@@ -23,17 +23,21 @@ impl Image {
         }
     }
 
-    pub fn in_bounds(&self, x: usize, y: usize) -> bool {
-        x < self.side() && y < self.side()
+    pub fn in_bounds(&self, x: isize, y: isize) -> bool {
+        x >= 0 && y >= 0 && x < self.side() as isize && y < self.side() as isize
     }
 
     pub fn get(&self, x: usize, y: usize) -> u8 {
-        assert!(self.in_bounds(x, y));
+        assert!(self.in_bounds(x as isize, y as isize));
         self.pixels[y * self.side_size + x]
     }
 
+    pub fn option_get(&self, x: isize, y: isize) -> Option<u8> {
+        if self.in_bounds(x, y) {Some(self.get(x as usize, y as usize))} else {None}
+    }
+
     pub fn x_y_iter(&self) -> ImageIterator {
-        ImageIterator::new(0, 0, self.side() - 1, self.side() - 1)
+        ImageIterator::new(0, 0, self.side(), self.side())
     }
 
     pub fn side(&self) -> usize {
@@ -56,17 +60,18 @@ impl Image {
     pub fn shrunken(&self, shrink: usize) -> Image {
         let mut result = Image::new();
         let target_side = self.side() / shrink;
-        for x in 0..target_side {
-            for y in 0..target_side {
-                result.add(self.subimage_mean(x, y, shrink));
-            }
-        }
+        ImageIterator::new(0, 0, target_side, target_side)
+            .for_each(|(x, y)| result.add(self.subimage_mean(x, y, shrink)));
         result
     }
 
-    pub fn subimage(&self, x1: usize, y1: usize, x2: usize, y2: usize) -> Image {
+    pub fn subimage(&self, x_center: usize, y_center: usize, side: usize) -> Image {
+        let offset = side as isize / 2;
+        let x_start = x_center as isize - offset;
+        let y_start = y_center as isize - offset;
         let mut result = Image::new();
-        ImageIterator::new(x1, y1, x2, y2).for_each(|(x, y)| result.add(self.get(x, y)));
+        SignedImageIterator::new(x_start, y_start, side as isize, side as isize)
+            .for_each(|(x, y)| result.add(self.option_get(x, y).unwrap_or(0)));
         result
     }
 
@@ -114,13 +119,44 @@ pub struct ImageIterator {
 }
 
 impl ImageIterator {
-    pub fn new(x1: usize, y1: usize, x2: usize, y2: usize) -> ImageIterator {
-        ImageIterator {x: x1, y: y1, width: x2 + 1, height: y2 + 1}
+    pub fn new(x: usize, y: usize, width: usize, height: usize) -> ImageIterator {
+        ImageIterator {x: x, y: y, width: width, height: height}
     }
 }
 
 impl Iterator for ImageIterator {
     type Item = (usize,usize);
+
+    fn next(&mut self) -> Option<Self::Item> {
+        let result = (self.x, self.y);
+        self.x += 1;
+        if self.x == self.width {
+            self.x = 0;
+            self.y += 1;
+            if self.y == self.height {
+                return None
+            }
+        }
+        Some(result)
+    }
+}
+
+// TODO: Copy-and-paste now, abstract later...
+pub struct SignedImageIterator {
+    width: isize,
+    height: isize,
+    x: isize,
+    y: isize
+}
+
+impl SignedImageIterator {
+    pub fn new(x: isize, y: isize, width: isize, height: isize) -> SignedImageIterator {
+        SignedImageIterator {x: x, y: y, width: width, height: height}
+    }
+}
+
+impl Iterator for SignedImageIterator {
+    type Item = (isize,isize);
 
     fn next(&mut self) -> Option<Self::Item> {
         let result = (self.x, self.y);

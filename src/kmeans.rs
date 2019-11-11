@@ -28,6 +28,8 @@ impl <T: Clone + Eq, D: Fn(&T,&T) -> R64, M: Fn(&Vec<T>) -> T> Kmeans<T,D,M> {
     }
 
     pub fn copy_means(&self) -> Vec<T> {self.means.clone()}
+
+    pub fn move_means(self) -> Vec<T> {self.means}
 }
 
 fn initial_plus_plus<T: Clone + Eq, D: Fn(&T,&T) -> R64>(k: usize, distance: &D, data: &Vec<T>) -> Vec<T> {
