@@ -1,8 +1,7 @@
 // Write a method that takes an Image and produces another Image with k classes for the pixel values
 // Write a distance metric for that method.
 
-use crate::mnist_data::{Image, ImageIterator, image_mean};
-use crate::kmeans::Kmeans;
+use crate::mnist_data::{Image, image_mean};
 use crate::kmeans;
 use decorum::R64;
 use crate::euclidean_distance::euclidean_distance;
@@ -58,7 +57,6 @@ pub fn max_across(distances: &Vec<Vec<R64>>) -> R64 {
     *(distances.iter().filter_map(|v| v.iter().max()).max().unwrap())
 }
 
-// TODO: Again, copy-and-paste for now, refactor later...
 pub fn min_across(distances: &Vec<Vec<R64>>) -> R64 {
     *(distances.iter().filter_map(|v| v.iter().min()).min().unwrap())
 }

@@ -1,7 +1,6 @@
 use decorum::R64;
 use rand::thread_rng;
 use rand::distributions::{Distribution, Uniform, WeightedIndex};
-use std::iter::Sum;
 
 // These were a nice idea, but they don't compile.
 //
@@ -56,7 +55,14 @@ fn kmeans_iterate<T: Clone + Eq, D: Fn(&T,&T) -> R64, M: Fn(&Vec<T>) -> T>(k: us
             classifications[category].push(datum.clone());
         }
         let prev = result;
-        result = classifications.iter().map(|v| mean(v)).collect();
+        result = (0..k)
+            .map(|i|
+                if classifications[i].len() > 0 {
+                    mean(&classifications[i])
+                } else {
+                    prev[i].clone()
+                })
+            .collect();
 
         if (0..result.len()).all(|i| prev[i] == result[i]) {
             return result;
@@ -69,4 +75,33 @@ fn classify<T: Clone + Eq, D: Fn(&T,&T) -> R64>(target: &T, means: &Vec<T>, dist
         .map(|i| (distance(&target, &means[i]), i))
         .collect();
     distances.iter().min().unwrap().1
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn manhattan(n1: &i32, n2: &i32) -> R64 {
+        let mut diff = n1 - n2;
+        if diff < 0 {diff = -diff;}
+        R64::from_inner(diff as f64)
+    }
+
+    fn mean(nums: &Vec<i32>) -> i32 {
+        let total: i32 = nums.iter().sum();
+        total / (nums.len() as i32)
+    }
+
+    #[test]
+    fn test_k_means() {
+        let target_means = vec![3, 11, 25, 40];
+        let data = vec![2, 3, 4, 10, 11, 12, 24, 25, 26, 35, 40, 45];
+        let kmeans =
+            Kmeans::new(target_means.len(), &data, manhattan, mean);
+        let means = kmeans.copy_means();
+        assert_eq!(means.len(), target_means.len());
+        for mean in target_means {
+            assert!(means.contains(&mean));
+        }
+    }
 }
