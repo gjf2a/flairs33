@@ -23,12 +23,17 @@ impl Image {
         }
     }
 
+    pub fn in_bounds(&self, x: usize, y: usize) -> bool {
+        x < self.side() && y < self.side()
+    }
+
     pub fn get(&self, x: usize, y: usize) -> u8 {
+        assert!(self.in_bounds(x, y));
         self.pixels[y * self.side_size + x]
     }
 
-    pub fn get_by_index(&self, i: usize) -> u8 {
-        self.pixels[i]
+    pub fn x_y_iter(&self) -> ImageIterator {
+        ImageIterator::new(0, 0, self.side() - 1, self.side() - 1)
     }
 
     pub fn side(&self) -> usize {
@@ -59,6 +64,12 @@ impl Image {
         result
     }
 
+    pub fn subimage(&self, x1: usize, y1: usize, x2: usize, y2: usize) -> Image {
+        let mut result = Image::new();
+        ImageIterator::new(x1, y1, x2, y2).for_each(|(x, y)| result.add(self.get(x, y)));
+        result
+    }
+
     fn subimage_mean(&self, x: usize, y: usize, side: usize) -> u8 {
         let mut sum: u16 = 0;
         for i in x..x + side {
@@ -67,6 +78,36 @@ impl Image {
             }
         }
         (sum / side.pow(2) as u16) as u8
+    }
+}
+
+pub struct ImageIterator {
+    width: usize,
+    height: usize,
+    x: usize,
+    y: usize
+}
+
+impl ImageIterator {
+    pub fn new(x1: usize, y1: usize, x2: usize, y2: usize) -> ImageIterator {
+        ImageIterator {x: x1, y: y1, width: x2 + 1, height: y2 + 1}
+    }
+}
+
+impl Iterator for ImageIterator {
+    type Item = (usize,usize);
+
+    fn next(&mut self) -> Option<Self::Item> {
+        let result = (self.x, self.y);
+        self.x += 1;
+        if self.x == self.width {
+            self.x = 0;
+            self.y += 1;
+            if self.y == self.height {
+                return None
+            }
+        }
+        Some(result)
     }
 }
 
