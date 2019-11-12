@@ -91,8 +91,36 @@ mod tests {
 
     #[test]
     fn test_kernels() {
-        let img = Image::from_vec(&(1..9).collect());
+        let img = Image::from_vec(&(1..10).collect());
         let filters = find_filters_from(&img, &img, 4, 2);
-        println!("{:?}", filters);
+        let filter_means: Vec<u8> = filters.iter().map(|f| f.pixel_mean()).collect();
+
+        let target_means_1: Vec<u8> = vec![3, 0, 6, 1];
+        let target_means_2: Vec<u8> = vec![3, 0, 6, 7];
+        assert!(test_filter_means(&target_means_1, &filter_means) ||
+                test_filter_means(&target_means_2, &filter_means));
+    }
+
+    fn test_filter_means(target_means: &Vec<u8>, filter_means: &Vec<u8>) -> bool {
+        for mean in filter_means.iter() {
+            if !target_means.contains(mean) && !target_means.contains(&(mean - 1)) && !target_means.contains(&(mean + 1)) {
+                return false;
+            }
+        }
+        true
+    }
+
+    #[test]
+    fn test_projection() {
+        let img = Image::from_vec(&(1..10).collect());
+        let kernels =
+            vec![Image::from_vec(&(0..4).collect()), Image::from_vec(&(6..10).collect())];
+        let projections = project_through(&img, &kernels);
+        let targets = vec![Image::from_vec(&vec![245, 252, 255, 250, 244, 224, 221, 157, 109]),
+            Image::from_vec(&vec![0, 36, 67, 62, 157, 196, 120, 244, 253])];
+        assert_eq!(projections.len(), targets.len());
+        for i in 0..targets.len() {
+            assert_eq!(targets[i], projections[i]);
+        }
     }
 }

@@ -92,6 +92,12 @@ impl Image {
         }
         (sum / side.pow(2) as u16) as u8
     }
+
+    pub fn pixel_mean(&self) -> u8 {
+        let mut sum: u16 = 0;
+        self.x_y_iter().for_each(|(x, y)| sum += self.get(x, y) as u16);
+        (sum / self.pixels.len() as u16) as u8
+    }
 }
 
 impl PartialEq for Image {
