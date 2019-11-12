@@ -32,13 +32,13 @@ pub fn project_through(src: &Image, kernels: &Vec<Image>) -> Vec<Image> {
         }
     }
 
-    let min = min_across(&distances);
-    let max = max_across(&distances);
+    let min = min_across(&distances).into_inner();
+    let max = max_across(&distances).into_inner();
 
     let mut result: Vec<Image> = (0..kernels.len()).map(|_| Image::new()).collect();
     for k in 0..kernels.len() {
         for distance in distances[k].iter() {
-            result[k].add(scale(*distance, min, max))
+            result[k].add(scale(distance.into_inner(), min, max))
         }
     }
     result
@@ -61,8 +61,8 @@ pub fn min_across(distances: &Vec<Vec<R64>>) -> R64 {
     *(distances.iter().filter_map(|v| v.iter().min()).min().unwrap())
 }
 
-pub fn scale(value: R64, min: R64, max: R64) -> u8 {
-    let float_scale = 1.0 - ((value - min) / (max - min)).into_inner();
+pub fn scale(value: f64, min: f64, max: f64) -> u8 {
+    let float_scale = 1.0 - ((value - min) / (max - min));
     (float_scale * std::u8::MAX as f64) as u8
 }
 
@@ -76,4 +76,23 @@ pub fn find_filters_from(img1: &Image, img2: &Image, num_filters: usize, kernel_
 fn add_kernels_from_to(img: &Image, raw_filters: &mut Vec<Image>, kernel_size: usize) {
     img.x_y_iter().
         for_each(|(x, y)| raw_filters.push(img.subimage(x, y, kernel_size)));
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_scale() {
+        assert_eq!(0, scale(100.0, 50.0, 100.0));
+        assert_eq!(255, scale(50.0, 50.0, 100.0));
+        assert_eq!(155, scale(69.6078, 50.0, 100.0));
+    }
+
+    #[test]
+    fn test_kernels() {
+        let img = Image::from_vec(&(1..9).collect());
+        let filters = find_filters_from(&img, &img, 4, 2);
+        println!("{:?}", filters);
+    }
 }

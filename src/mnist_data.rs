@@ -1,7 +1,7 @@
 use std::fs;
 use std::io;
 use std::io::Read;
-use std::ops::AddAssign;
+use std::ops::{AddAssign, Add};
 
 pub const IMAGE_DIMENSION: usize = 28;
 pub const IMAGE_BYTES: usize = IMAGE_DIMENSION * IMAGE_DIMENSION;
@@ -79,6 +79,7 @@ impl Image {
         let mut result = Image::new();
         ImageIterator::new(x_start, y_start, side as isize, side as isize)
             .for_each(|(x, y)| result.add(self.option_get(x, y).unwrap_or(0)));
+        assert_eq!(side, result.side());
         result
     }
 
@@ -130,30 +131,32 @@ impl FromIntLiteral<isize> for isize {
     fn from(literal: isize) -> isize {literal}
 }
 
-pub struct ImageIterator<N: Copy + AddAssign + FromIntLiteral<N> + Eq> {
+pub struct ImageIterator<N> {
     width: N,
     height: N,
     x: N,
-    y: N
+    y: N,
+    x_start: N,
+    y_start: N
 }
 
-impl<N: Copy + AddAssign + FromIntLiteral<N> + Eq> ImageIterator<N> {
+impl<N: Copy> ImageIterator<N> {
     pub fn new(x: N, y: N, width: N, height: N) -> ImageIterator<N> {
-        ImageIterator {x: x, y: y, width: width, height: height}
+        ImageIterator {x: x, y: y, width: width, height: height, x_start: x, y_start: y}
     }
 }
 
-impl<N: Copy + AddAssign + FromIntLiteral<N> + Eq> Iterator for ImageIterator<N> {
+impl<N: Copy + AddAssign + Add<Output=N> + FromIntLiteral<N> + Eq> Iterator for ImageIterator<N> {
     type Item = (N,N);
 
     fn next(&mut self) -> Option<Self::Item> {
-        if self.y == self.height {
+        if self.y == self.y_start + self.height {
             None
         } else {
             let result = (self.x, self.y);
             self.x += N::from(1);
-            if self.x == self.width {
-                self.x = N::from(0);
+            if self.x == self.x_start + self.width {
+                self.x = self.x_start;
                 self.y += N::from(1);
             }
             Some(result)
@@ -238,9 +241,22 @@ mod tests {
     }
 
     #[test]
-    fn test_x_y_iterator() {
+    fn test_x_y_iterator_1() {
         let iterated: Vec<(isize,isize)> = ImageIterator::new(0, 0, 2, 3).collect();
         let reference: Vec<(isize,isize)> = vec![(0, 0), (1, 0), (0, 1), (1, 1), (0, 2), (1, 2)];
+        assert_eq!(iterated.len(), reference.len());
+        for i in 0..reference.len() {
+            assert_eq!(reference[i], iterated[i]);
+        }
+    }
+
+    #[test]
+    fn test_x_y_iterator_2() {
+        let iterated: Vec<(isize,isize)> = ImageIterator::new(-1, -1, 2, 2).collect();
+        let reference: Vec<(isize,isize)> = vec![(-1, -1), (0, -1), (-1, 0), (0, 0)];
+        for (x, y) in iterated.iter() {
+            println!("{} {}", x, y)
+        }
         assert_eq!(iterated.len(), reference.len());
         for i in 0..reference.len() {
             assert_eq!(reference[i], iterated[i]);
