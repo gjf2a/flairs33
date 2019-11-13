@@ -19,9 +19,10 @@ use decorum::R64;
 use std::env;
 use std::collections::HashSet;
 use crate::brief::Descriptor;
+use crate::convolutional::convolutional_distance;
 
 const BASE_PATH: &str = "/Users/ferrer/Desktop/mnist_data/";
-const SHRINK: usize = 50;
+const SHRINK_FACTOR: usize = 50;
 const K: usize = 7;
 
 macro_rules! timed_op {
@@ -33,9 +34,18 @@ macro_rules! timed_op {
     }
 }
 
+const HELP: &str = "help";
+const PERMUTE: &str = "permute";
+const BASELINE: &str = "baseline";
+const PYRAMID: &str = "pyramid";
+const BRIEF: &str = "brief";
+const CONVOLUTIONAL_1: &str = "convolutional1";
+const CONVOLUTIONAL_2: &str = "convolutional2";
+const SHRINK: &str = "shrink";
+
 fn main() -> io::Result<()> {
     let args: HashSet<String> = env::args().collect();
-    if args.contains("help") {
+    if args.contains(HELP) {
         help_message();
     } else {
         train_and_test(&args)?;
@@ -45,22 +55,24 @@ fn main() -> io::Result<()> {
 
 fn help_message() {
     println!("Usage: flairs33 [options]:");
-    println!("\thelp: print this message");
-    println!("\tpermute: runs additional experiment that permutes image pixels");
-    println!("\tbaseline: straightforward knn");
-    println!("\tpyramid: knn with pyramid images");
-    println!("\tbrief: knn with BRIEF descriptors");
-    println!("\tshrink: Use only 1 out of {} training/testing images", SHRINK);
+    println!("\t{}: print this message", HELP);
+    println!("\t{}: runs additional experiment that permutes image pixels", PERMUTE);
+    println!("\t{}: straightforward knn", BASELINE);
+    println!("\t{}: knn with pyramid images", PYRAMID);
+    println!("\t{}: knn with BRIEF descriptors", BRIEF);
+    println!("\t{}: knn with convolutional distance metric (1 level)", CONVOLUTIONAL_1);
+    println!("\t{}: knn with convolutional distance metric (2 levels)", CONVOLUTIONAL_2);
+    println!("\t{}: Use only 1 out of {} training/testing images", SHRINK, SHRINK_FACTOR);
 }
 
 fn train_and_test(args: &HashSet<String>) -> io::Result<()> {
     let mut training_images = load_data_set("train")?;
     let mut testing_images = load_data_set("t10k")?;
 
-    if args.contains("shrink") {
-        println!("Shrinking by {}", SHRINK);
-        training_images = mnist_data::discard(&training_images, SHRINK);
-        testing_images = mnist_data::discard(&testing_images, SHRINK);
+    if args.contains(SHRINK) {
+        println!("Shrinking by {}", SHRINK_FACTOR);
+        training_images = mnist_data::discard(&training_images, SHRINK_FACTOR);
+        testing_images = mnist_data::discard(&testing_images, SHRINK_FACTOR);
     }
 
     see_label_counts(&training_images, "Training");
@@ -70,7 +82,7 @@ fn train_and_test(args: &HashSet<String>) -> io::Result<()> {
 
     run_all_tests_with(&args, &training_images, &testing_images, &descriptor);
 
-    if args.contains("permute") {
+    if args.contains(PERMUTE) {
         println!("Permuting images");
         let permutation = permutation::read_permutation("image_permutation_file")?;
         run_all_tests_with(&args,
@@ -83,14 +95,20 @@ fn train_and_test(args: &HashSet<String>) -> io::Result<()> {
 }
 
 fn run_all_tests_with(args: &HashSet<String>, training_images: &Vec<(u8,Image)>, testing_images: &Vec<(u8,Image)>, descriptor: &Descriptor) {
-    if args.contains("baseline") {
-        build_and_test_model("Baseline", &training_images, &testing_images, |v| v.clone(), euclidean_distance::euclidean_distance);
+    if args.contains(BASELINE) {
+        build_and_test_model(BASELINE, &training_images, &testing_images, |v| v.clone(), euclidean_distance::euclidean_distance);
     }
-    if args.contains("pyramid") {
-        build_and_test_model("Pyramid", &training_images, &testing_images, images2pyramids, pyramid::pyramid_distance);
+    if args.contains(PYRAMID) {
+        build_and_test_model(PYRAMID, &training_images, &testing_images, images2pyramids, pyramid::pyramid_distance);
     }
-    if args.contains("brief") {
-        build_and_test_model("BRIEF", &training_images, &testing_images, |images| descriptor.images_2_brief_vecs(images), brief::bitvec_distance);
+    if args.contains(BRIEF) {
+        build_and_test_model(&BRIEF.to_uppercase(), &training_images, &testing_images, |images| descriptor.images_2_brief_vecs(images), brief::bitvec_distance);
+    }
+    if args.contains(CONVOLUTIONAL_1) {
+        build_and_test_model(CONVOLUTIONAL_1, &training_images, &testing_images, |v| v.clone(), |img1, img2| convolutional_distance(img1, img2, 1));
+    }
+    if args.contains(CONVOLUTIONAL_2) {
+        build_and_test_model(CONVOLUTIONAL_2, &training_images, &testing_images, |v| v.clone(), |img1, img2| convolutional_distance(img1, img2, 2));
     }
 }
 

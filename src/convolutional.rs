@@ -1,6 +1,3 @@
-// Write a method that takes an Image and produces another Image with k classes for the pixel values
-// Write a distance metric for that method.
-
 use crate::mnist_data::{Image, image_mean};
 use crate::kmeans;
 use decorum::R64;
@@ -24,11 +21,46 @@ use crate::euclidean_distance::euclidean_distance;
 // - Imagine 8 filters
 // - 28x28, 8 x 14x14, 64 x 7x7
 
-pub fn project_through(src: &Image, kernels: &Vec<Image>) -> Vec<Image> {
+const NUM_KERNELS: usize = 8;
+const KERNEL_SIZE: usize = 3;
+const STRIDE: usize = 2;
+
+pub fn convolutional_distance(img1: &Image, img2: &Image, levels: usize) -> R64 {
+    assert!(levels > 0);
+    let layers = make_convolutional_layers(img1, img2, NUM_KERNELS, STRIDE, levels);
+    let final_layer_1 = layers.0.last().unwrap();
+    let final_layer_2 = layers.1.last().unwrap();
+    assert_eq!(final_layer_1.len(), final_layer_2.len());
+    (0..final_layer_1.len())
+        .map(|i| euclidean_distance(&final_layer_1[i], &final_layer_2[i]))
+        .sum()
+}
+
+pub fn make_convolutional_layers(img1: &Image, img2: &Image, kernels: usize, stride: usize, levels: usize) -> (Vec<Vec<Image>>,Vec<Vec<Image>>) {
+    let mut result = (vec![vec![img1.clone()]], vec![vec![img2.clone()]]);
+    for _ in 0..levels {
+        let frontier1 = result.0.last().unwrap();
+        let frontier2 = result.1.last().unwrap();
+        let mut projections1 = Vec::new();
+        let mut projections2 = Vec::new();
+
+        assert_eq!(frontier1.len(), frontier2.len());
+        for i in 0..frontier1.len() {
+            let kernels = find_filters_from(&frontier1[i], &frontier2[i], kernels, KERNEL_SIZE);
+            projections1.append(&mut project_through(&frontier1[i], &kernels, stride));
+            projections2.append(&mut project_through(&frontier2[i], &kernels, stride));
+        }
+        result.0.push(projections1);
+        result.1.push(projections2);
+    }
+    result
+}
+
+pub fn project_through(src: &Image, kernels: &Vec<Image>, stride: usize) -> Vec<Image> {
     let mut distances: Vec<Vec<R64>> = (0..kernels.len()).map(|_| Vec::new()).collect();
-    for (x, y) in src.x_y_iter() {
+    for (x, y) in src.x_y_step_iter(stride) {
         for k in 0..kernels.len() {
-            distances[k].push(apply_to(&kernels[k], src, x, y));
+            distances[k].push(euclidean_distance(&kernels[k], &src.subimage(x, y, kernels[k].side())));
         }
     }
 
@@ -42,15 +74,6 @@ pub fn project_through(src: &Image, kernels: &Vec<Image>) -> Vec<Image> {
         }
     }
     result
-}
-
-pub fn apply_to(kernel: &Image, target: &Image, x: usize, y: usize) -> R64 {
-    let offset = kernel.side() / 2;
-    let mut distance_sum: R64 = R64::from_inner(0.0);
-    for (kx, ky) in kernel.x_y_iter() {
-        distance_sum += euclidean_distance(&kernel, &target.subimage(x, y, kernel.side()))
-    }
-    distance_sum
 }
 
 pub fn max_across(distances: &Vec<Vec<R64>>) -> R64 {
@@ -115,7 +138,7 @@ mod tests {
         let img = Image::from_vec(&(1..10).collect());
         let kernels =
             vec![Image::from_vec(&(0..4).collect()), Image::from_vec(&(6..10).collect())];
-        let projections = project_through(&img, &kernels);
+        let projections = project_through(&img, &kernels, 1);
         let targets = vec![Image::from_vec(&vec![245, 252, 255, 250, 244, 224, 221, 157, 109]),
             Image::from_vec(&vec![0, 36, 67, 62, 157, 196, 120, 244, 253])];
         assert_eq!(projections.len(), targets.len());

@@ -4,6 +4,7 @@ use std::io;
 use std::fs::File;
 use std::io::{Write, Read};
 
+#[cfg(test)]
 pub fn make_permutation(n: usize) -> Vec<usize> {
     let mut rng = thread_rng();
     let mut indices: Vec<usize> = (0..n).collect();
@@ -11,6 +12,7 @@ pub fn make_permutation(n: usize) -> Vec<usize> {
     indices
 }
 
+#[cfg(test)]
 pub fn write_permutation(filename: &str, nums: &Vec<usize>) -> io::Result<()> {
     let mut file = File::create(filename)?;
     for elt in nums {
@@ -20,6 +22,7 @@ pub fn write_permutation(filename: &str, nums: &Vec<usize>) -> io::Result<()> {
     Ok(())
 }
 
+#[cfg(test)]
 pub fn read_permutation(filename: &str) -> io::Result<Vec<usize>> {
     let mut file = File::open(filename)?;
     let mut contents = String::new();

@@ -17,6 +17,7 @@ impl Image {
         Image {pixels: Vec::new(), side_size: 0}
     }
 
+    #[cfg(test)]
     pub fn from_vec(v: &Vec<u8>) -> Image {
         let mut result = Image::new();
         v.iter().for_each(|p| result.add(*p));
@@ -44,7 +45,11 @@ impl Image {
     }
 
     pub fn x_y_iter(&self) -> ImageIterator<usize> {
-        ImageIterator::new(0, 0, self.side(), self.side())
+        ImageIterator::new(0, 0, self.side(), self.side(), 1)
+    }
+
+    pub fn x_y_step_iter(&self, step_size: usize) -> ImageIterator<usize> {
+        ImageIterator::new(0, 0, self.side(), self.side(), step_size)
     }
 
     pub fn side(&self) -> usize {
@@ -67,7 +72,7 @@ impl Image {
     pub fn shrunken(&self, shrink: usize) -> Image {
         let mut result = Image::new();
         let target_side = self.side() / shrink;
-        ImageIterator::new(0, 0, target_side, target_side)
+        ImageIterator::new(0, 0, target_side, target_side, 1)
             .for_each(|(x, y)| result.add(self.subimage_mean(x, y, shrink)));
         result
     }
@@ -77,7 +82,7 @@ impl Image {
         let x_start = x_center as isize - offset;
         let y_start = y_center as isize - offset;
         let mut result = Image::new();
-        ImageIterator::new(x_start, y_start, side as isize, side as isize)
+        ImageIterator::new(x_start, y_start, side as isize, side as isize, 1)
             .for_each(|(x, y)| result.add(self.option_get(x, y).unwrap_or(0)));
         assert_eq!(side, result.side());
         result
@@ -93,6 +98,7 @@ impl Image {
         (sum / side.pow(2) as u16) as u8
     }
 
+    #[cfg(test)]
     pub fn pixel_mean(&self) -> u8 {
         let mut sum: u16 = 0;
         self.x_y_iter().for_each(|(x, y)| sum += self.get(x, y) as u16);
@@ -125,45 +131,34 @@ pub fn image_mean(images: &Vec<Image>) -> Image {
     result
 }
 
-pub trait FromIntLiteral<N> {
-    fn from(literal: isize) -> N;
-}
-
-impl FromIntLiteral<usize> for usize {
-    fn from(literal: isize) -> usize {literal as usize}
-}
-
-impl FromIntLiteral<isize> for isize {
-    fn from(literal: isize) -> isize {literal}
-}
-
 pub struct ImageIterator<N> {
     width: N,
     height: N,
     x: N,
     y: N,
     x_start: N,
-    y_start: N
+    y_start: N,
+    stride: N
 }
 
 impl<N: Copy> ImageIterator<N> {
-    pub fn new(x: N, y: N, width: N, height: N) -> ImageIterator<N> {
-        ImageIterator {x: x, y: y, width: width, height: height, x_start: x, y_start: y}
+    pub fn new(x: N, y: N, width: N, height: N, stride: N) -> ImageIterator<N> {
+        ImageIterator {x: x, y: y, width: width, height: height, x_start: x, y_start: y, stride: stride}
     }
 }
 
-impl<N: Copy + AddAssign + Add<Output=N> + FromIntLiteral<N> + Eq> Iterator for ImageIterator<N> {
+impl<N: Copy + AddAssign + Add<Output=N> + Eq + Ord> Iterator for ImageIterator<N> {
     type Item = (N,N);
 
     fn next(&mut self) -> Option<Self::Item> {
-        if self.y == self.y_start + self.height {
+        if self.y >= self.y_start + self.height {
             None
         } else {
             let result = (self.x, self.y);
-            self.x += N::from(1);
-            if self.x == self.x_start + self.width {
+            self.x += self.stride;
+            if self.x >= self.x_start + self.width {
                 self.x = self.x_start;
-                self.y += N::from(1);
+                self.y += self.stride;
             }
             Some(result)
         }
@@ -248,7 +243,7 @@ mod tests {
 
     #[test]
     fn test_x_y_iterator_1() {
-        let iterated: Vec<(isize,isize)> = ImageIterator::new(0, 0, 2, 3).collect();
+        let iterated: Vec<(isize,isize)> = ImageIterator::new(0, 0, 2, 3, 1).collect();
         let reference: Vec<(isize,isize)> = vec![(0, 0), (1, 0), (0, 1), (1, 1), (0, 2), (1, 2)];
         assert_eq!(iterated.len(), reference.len());
         for i in 0..reference.len() {
@@ -258,7 +253,7 @@ mod tests {
 
     #[test]
     fn test_x_y_iterator_2() {
-        let iterated: Vec<(isize,isize)> = ImageIterator::new(-1, -1, 2, 2).collect();
+        let iterated: Vec<(isize,isize)> = ImageIterator::new(-1, -1, 2, 2, 1).collect();
         let reference: Vec<(isize,isize)> = vec![(-1, -1), (0, -1), (-1, 0), (0, 0)];
         for (x, y) in iterated.iter() {
             println!("{} {}", x, y)

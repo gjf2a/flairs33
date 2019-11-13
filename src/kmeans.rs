@@ -8,24 +8,26 @@ use rand::distributions::{Distribution, Uniform, WeightedIndex};
 //pub trait Dist<T>: Fn(&T,&T) -> R64 {}
 //pub trait Mean<T>: Fn(&Vec<T>) -> T {}
 
-pub struct Kmeans<T, D: Fn(&T,&T) -> R64, M: Fn(&Vec<T>) -> T> {
+pub struct Kmeans<T, D: Fn(&T,&T) -> R64> {
     k: usize,
     means: Vec<T>,
-    distance: D,
-    mean: M
+    distance: D
 }
 
-impl <T: Clone + Eq, D: Fn(&T,&T) -> R64, M: Fn(&Vec<T>) -> T> Kmeans<T,D,M> {
-    pub fn new(k: usize, data: &Vec<T>, distance: D, mean: M) -> Kmeans<T,D,M> {
-        Kmeans {k: k, means: kmeans_iterate(k, data, &distance, &mean), distance: distance, mean: mean}
+impl <T: Clone + Eq, D: Fn(&T,&T) -> R64> Kmeans<T,D> {
+    pub fn new<M: Fn(&Vec<T>) -> T>(k: usize, data: &Vec<T>, distance: D, mean: M) -> Kmeans<T,D> {
+        Kmeans {k: k, means: kmeans_iterate(k, data, &distance, &mean), distance: distance}
     }
 
+    #[cfg(test)]
     pub fn k(&self) -> usize {self.k}
 
+    #[cfg(test)]
     pub fn classification(&self, sample: &T) -> usize {
         classify(sample, &self.means, &self.distance)
     }
 
+    #[cfg(test)]
     pub fn copy_means(&self) -> Vec<T> {self.means.clone()}
 
     pub fn move_means(self) -> Vec<T> {self.means}
@@ -98,10 +100,16 @@ mod tests {
         let data = vec![2, 3, 4, 10, 11, 12, 24, 25, 26, 35, 40, 45];
         let kmeans =
             Kmeans::new(target_means.len(), &data, manhattan, mean);
-        let means = kmeans.copy_means();
-        assert_eq!(means.len(), target_means.len());
-        for mean in target_means {
-            assert!(means.contains(&mean));
+        let mut sorted_means = kmeans.copy_means();
+        sorted_means.sort();
+        let unsorted_means = kmeans.copy_means();
+        assert_eq!(kmeans.k(), sorted_means.len());
+        assert_eq!(sorted_means.len(), target_means.len());
+        for i in 0..sorted_means.len() {
+            assert_eq!(sorted_means[i], target_means[i]);
+            let matching_mean = unsorted_means[kmeans.classification(&target_means[i])];
+            let sorted_index = sorted_means.binary_search(&matching_mean).unwrap();
+            assert_eq!(i, sorted_index);
         }
     }
 }
