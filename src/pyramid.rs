@@ -39,7 +39,3 @@ pub fn pyramid_distance(img1: &Pyramid, img2: &Pyramid) -> R64 {
     }
     total
 }
-
-pub fn images2pyramids(images: &Vec<(u8,Image)>) -> Vec<(u8,Pyramid)> {
-    images.iter().map(|(label, img)| (*label, Pyramid::new(img))).collect()
-}

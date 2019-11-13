@@ -1,7 +1,8 @@
 use crate::hash_histogram::HashHistogram;
-use std::fmt;
+use std::{fmt, io};
 use std::fmt::Formatter;
 use std::collections::HashSet;
+use std::io::Write;
 
 pub struct ConfusionMatrix {
     label_2_right: HashHistogram<u8>,
@@ -63,6 +64,7 @@ pub trait Classifier<I> {
             count += 1;
             if count % twentieth == 0 {
                 print!("{}%; ", count * 5 / twentieth);
+                io::stdout().flush().ok().expect("Could not flush stdout");
             }
         }
         println!();

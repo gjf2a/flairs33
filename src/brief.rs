@@ -47,12 +47,6 @@ impl Descriptor {
             .map(|((x1, y1), (x2, y2))| img.get(*x1, *y1) < img.get(*x2, *y2))
             .collect()
     }
-
-    pub fn images_2_brief_vecs(&self, images: &Vec<(u8,Image)>) -> Vec<(u8,Vec<bool>)> {
-        images.iter()
-            .map(|(label, img)| (*label, self.apply_to(img)))
-            .collect()
-    }
 }
 
 pub fn bitvec_distance(bv1: &Vec<bool>, bv2: &Vec<bool>) -> R64 {
