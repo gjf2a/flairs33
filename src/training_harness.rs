@@ -62,9 +62,10 @@ pub trait Classifier<I> {
             result.record(test_img.0, self.classify(&test_img.1));
             count += 1;
             if count % twentieth == 0 {
-                println!("{}% tested", count * 5 / twentieth);
+                print!("{}%; ", count * 5 / twentieth);
             }
         }
+        println!();
         result
     }
 }

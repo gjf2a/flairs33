@@ -2,25 +2,19 @@ use decorum::R64;
 use rand::thread_rng;
 use rand::distributions::{Distribution, Uniform, WeightedIndex};
 
-// These were a nice idea, but they don't compile.
-//
-//pub trait Data: Clone + Eq {}
-//pub trait Dist<T>: Fn(&T,&T) -> R64 {}
-//pub trait Mean<T>: Fn(&Vec<T>) -> T {}
-
+#[allow(dead_code)] // distance is only used in the test code, for now, as it is used strictly as a parameter during initialization.
 pub struct Kmeans<T, D: Fn(&T,&T) -> R64> {
-    k: usize,
     means: Vec<T>,
     distance: D
 }
 
 impl <T: Clone + Eq, D: Fn(&T,&T) -> R64> Kmeans<T,D> {
     pub fn new<M: Fn(&Vec<T>) -> T>(k: usize, data: &Vec<T>, distance: D, mean: M) -> Kmeans<T,D> {
-        Kmeans {k: k, means: kmeans_iterate(k, data, &distance, &mean), distance: distance}
+        Kmeans {means: kmeans_iterate(k, data, &distance, &mean), distance: distance}
     }
 
     #[cfg(test)]
-    pub fn k(&self) -> usize {self.k}
+    pub fn k(&self) -> usize {self.means.len()}
 
     #[cfg(test)]
     pub fn classification(&self, sample: &T) -> usize {

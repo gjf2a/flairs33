@@ -78,11 +78,8 @@ impl Image {
     }
 
     pub fn subimage(&self, x_center: usize, y_center: usize, side: usize) -> Image {
-        let offset = side as isize / 2;
-        let x_start = x_center as isize - offset;
-        let y_start = y_center as isize - offset;
         let mut result = Image::new();
-        ImageIterator::new(x_start, y_start, side as isize, side as isize, 1)
+        ImageIterator::centered(x_center as isize, y_center as isize, side as isize, side as isize, 1)
             .for_each(|(x, y)| result.add(self.option_get(x, y).unwrap_or(0)));
         assert_eq!(side, result.side());
         result
@@ -144,6 +141,12 @@ pub struct ImageIterator<N> {
 impl<N: Copy> ImageIterator<N> {
     pub fn new(x: N, y: N, width: N, height: N, stride: N) -> ImageIterator<N> {
         ImageIterator {x: x, y: y, width: width, height: height, x_start: x, y_start: y, stride: stride}
+    }
+}
+
+impl ImageIterator<isize> {
+    pub fn centered(x: isize, y: isize, width: isize, height: isize, stride: isize) -> ImageIterator<isize> {
+        ImageIterator::new(x - width / 2, y - height / 2, width, height, stride)
     }
 }
 
@@ -255,9 +258,6 @@ mod tests {
     fn test_x_y_iterator_2() {
         let iterated: Vec<(isize,isize)> = ImageIterator::new(-1, -1, 2, 2, 1).collect();
         let reference: Vec<(isize,isize)> = vec![(-1, -1), (0, -1), (-1, 0), (0, 0)];
-        for (x, y) in iterated.iter() {
-            println!("{} {}", x, y)
-        }
         assert_eq!(iterated.len(), reference.len());
         for i in 0..reference.len() {
             assert_eq!(reference[i], iterated[i]);

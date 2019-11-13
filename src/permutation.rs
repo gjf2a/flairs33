@@ -1,8 +1,12 @@
+#[cfg(test)]
 use rand::thread_rng;
+#[cfg(test)]
 use rand::seq::SliceRandom;
 use std::io;
 use std::fs::File;
-use std::io::{Write, Read};
+#[cfg(test)]
+use std::io::Write;
+use std::io::Read;
 
 #[cfg(test)]
 pub fn make_permutation(n: usize) -> Vec<usize> {
@@ -22,7 +26,6 @@ pub fn write_permutation(filename: &str, nums: &Vec<usize>) -> io::Result<()> {
     Ok(())
 }
 
-#[cfg(test)]
 pub fn read_permutation(filename: &str) -> io::Result<Vec<usize>> {
     let mut file = File::open(filename)?;
     let mut contents = String::new();
