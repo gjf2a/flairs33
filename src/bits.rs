@@ -1,5 +1,6 @@
 use std::ops::BitXor;
 use decorum::R64;
+#[cfg(test)]
 use bitvec::prelude::*;
 
 const NUM_BITS: u64 = 64;
@@ -228,5 +229,7 @@ mod tests {
         let bitvec_distance_1 = print_time_milliseconds("bitvec distance 1", || bitvec_distance_1(&bitvec_1, &bitvec_2));
         let bitvec_distance_2 = print_time_milliseconds("bitvec distance 2", || bitvec_distance_2(&bitvec_1, &bitvec_2));
         assert_eq!(baseline_distance, bits_distance);
+        assert_eq!(baseline_distance, bitvec_distance_1);
+        assert_eq!(baseline_distance, bitvec_distance_2);
     }
 }
