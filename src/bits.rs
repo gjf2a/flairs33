@@ -1,11 +1,11 @@
 use std::ops::BitXor;
 use decorum::R64;
-use std::time::Instant;
 
 const NUM_BITS: u64 = 64;
 
 const LOOKUP_8_BIT: [u8; 256] = [0, 1, 1, 2, 1, 2, 2, 3, 1, 2, 2, 3, 2, 3, 3, 4, 1, 2, 2, 3, 2, 3, 3, 4, 2, 3, 3, 4, 3, 4, 4, 5, 1, 2, 2, 3, 2, 3, 3, 4, 2, 3, 3, 4, 3, 4, 4, 5, 2, 3, 3, 4, 3, 4, 4, 5, 3, 4, 4, 5, 4, 5, 5, 6, 1, 2, 2, 3, 2, 3, 3, 4, 2, 3, 3, 4, 3, 4, 4, 5, 2, 3, 3, 4, 3, 4, 4, 5, 3, 4, 4, 5, 4, 5, 5, 6, 2, 3, 3, 4, 3, 4, 4, 5, 3, 4, 4, 5, 4, 5, 5, 6, 3, 4, 4, 5, 4, 5, 5, 6, 4, 5, 5, 6, 5, 6, 6, 7, 1, 2, 2, 3, 2, 3, 3, 4, 2, 3, 3, 4, 3, 4, 4, 5, 2, 3, 3, 4, 3, 4, 4, 5, 3, 4, 4, 5, 4, 5, 5, 6, 2, 3, 3, 4, 3, 4, 4, 5, 3, 4, 4, 5, 4, 5, 5, 6, 3, 4, 4, 5, 4, 5, 5, 6, 4, 5, 5, 6, 5, 6, 6, 7, 2, 3, 3, 4, 3, 4, 4, 5, 3, 4, 4, 5, 4, 5, 5, 6, 3, 4, 4, 5, 4, 5, 5, 6, 4, 5, 5, 6, 5, 6, 6, 7, 3, 4, 4, 5, 4, 5, 5, 6, 4, 5, 5, 6, 5, 6, 6, 7, 4, 5, 5, 6, 5, 6, 6, 7, 5, 6, 6, 7, 6, 7, 7, 8];
 
+#[cfg(test)]
 pub fn log2(n: u64) -> u8 {
     assert!(n >= 1);
     let mut log = 0;
@@ -17,6 +17,7 @@ pub fn log2(n: u64) -> u8 {
     log
 }
 
+#[cfg(test)]
 pub fn num_bits(n: u64) -> u8 {
     let mut bits = 0;
     let mut leftover = n;
@@ -60,8 +61,6 @@ impl Bits {
     }
 
     pub fn count_bits_on(&self) -> usize {
-        //self.bits.iter().map(|word| count_bits_on(*word)).sum()
-        //self.bits.iter().map(|word| num_bits(*word) as usize).sum()
         self.bits.iter().map(|word| count_lookup(*word) as usize).sum()
     }
 }
@@ -84,16 +83,6 @@ fn get_offset(index: u64) -> u64 {
 
 fn get_word(index: u64) -> usize {
     (index / NUM_BITS) as usize
-}
-
-fn count_bits_on(value: u64) -> usize {
-    let mut count = 0;
-    for i in 0..NUM_BITS {
-        if value & get_mask(i) > 0 {
-            count += 1;
-        }
-    }
-    count
 }
 
 fn count_lookup(value: u64) -> u8 {
@@ -128,32 +117,11 @@ impl BitXor for &Bits {
     }
 }
 
-pub fn time<F: Fn()>(label: &str, f: F) {
-    println!("Started {}...", label);
-    let start = Instant::now();
-    f();
-    println!("Finished {} after {} milliseconds", label,
-             Instant::now().duration_since(start).as_millis());
-}
-
-pub fn time_milliseconds<N, F: Fn() -> N>(f: F) -> (N, u128) {
-    let start = Instant::now();
-    let data = f();
-    let millis = Instant::now().duration_since(start).as_millis();
-    (data, millis)
-}
-
-pub fn print_time_milliseconds<N, F: Fn() -> N>(label: &str, f: F) -> N {
-    println!("Started {}...", label);
-    let result = time_milliseconds(f);
-    println!("Finished {} after {} milliseconds", label, result.1);
-    result.0
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;
     use crate::brief::bitvec_distance;
+    use crate::timing::print_time_milliseconds;
 
     #[test]
     fn test_bits() {
@@ -218,6 +186,13 @@ mod tests {
         assert_eq!(1, num_bits(8));
     }
 
+    pub fn bool_vec_distance(bv1: &Vec<bool>, bv2: &Vec<bool>) -> R64 {
+        assert_eq!(bv1.len(), bv2.len());
+        R64::from_inner((0..bv1.len())
+            .filter(|i| bv1[*i] != bv2[*i])
+            .count() as f64)
+    }
+
     #[test]
     fn test_time() {
         let num_items = 1000000;
@@ -229,7 +204,7 @@ mod tests {
         let mut bits_2 = Bits::new();
         baseline_2.iter().for_each(|b| bits_2.add(*b));
 
-        let baseline_distance = print_time_milliseconds("baseline distance", || bitvec_distance(&baseline_1, &baseline_2));
+        let baseline_distance = print_time_milliseconds("baseline distance", || bool_vec_distance(&baseline_1, &baseline_2));
         let bits_distance = print_time_milliseconds("bits distance", || real_distance(&bits_1, &bits_2));
         assert_eq!(baseline_distance, bits_distance);
     }

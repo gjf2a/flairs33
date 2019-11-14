@@ -10,11 +10,10 @@ mod kmeans;
 mod patch;
 mod convolutional;
 mod bits;
-#[macro_use] mod timing;
+mod timing;
 
 use std::io;
 use crate::training_harness::Classifier;
-use std::time::Instant;
 use crate::hash_histogram::HashHistogram;
 use crate::pyramid::Pyramid;
 use crate::mnist_data::Image;
@@ -24,6 +23,7 @@ use std::collections::HashSet;
 use crate::brief::Descriptor;
 use crate::convolutional::convolutional_distance;
 use crate::patch::patchify;
+use crate::timing::print_time_milliseconds;
 
 const BASE_PATH: &str = "/Users/ferrer/Desktop/mnist_data/";
 const SHRINK_FACTOR: usize = 50;
@@ -100,10 +100,10 @@ fn run_all_tests_with(args: &HashSet<String>, training_images: &Vec<(u8,Image)>,
         build_and_test_model(PYRAMID, &training_images, &testing_images, Pyramid::new, pyramid::pyramid_distance);
     }
     if args.contains(BRIEF) {
-        build_and_test_model(&BRIEF.to_uppercase(), &training_images, &testing_images, |img| descriptor.apply_to(img), brief::bitvec_distance);
+        build_and_test_model(&BRIEF.to_uppercase(), &training_images, &testing_images, |img| descriptor.apply_to(img), bits::real_distance);
     }
     if args.contains(PATCH) {
-        build_and_test_model(PATCH, &training_images, &testing_images, |img| patchify(img, PATCH_SIZE), brief::bitvec_distance);
+        build_and_test_model(PATCH, &training_images, &testing_images, |img| patchify(img, PATCH_SIZE), bits::real_distance);
     }
     if args.contains(CONVOLUTIONAL_1) {
         build_and_test_model(CONVOLUTIONAL_1, &training_images, &testing_images, |v| v.clone(), |img1, img2| convolutional_distance(img1, img2, 1));
@@ -117,9 +117,9 @@ fn load_data_set(file_prefix: &str) -> io::Result<Vec<(u8,Image)>> {
     let train_images = format!("{}{}-images-idx3-ubyte", BASE_PATH, file_prefix);
     let train_labels = format!("{}{}-labels-idx1-ubyte", BASE_PATH, file_prefix);
 
-    timed_op!(format!("loading mnist {} images", file_prefix),
-        let training_images = mnist_data::init_from_files(train_images.as_str(), train_labels.as_str())?
-    );
+    let training_images = print_time_milliseconds(&format!("loading mnist {} images", file_prefix),
+        || mnist_data::init_from_files(train_images.as_str(), train_labels.as_str()))?;
+
     println!("Number of {} images: {}", file_prefix, training_images.len());
     Ok(training_images)
 }
@@ -132,21 +132,16 @@ fn permuted_data_set(permutation: &Vec<usize>, data: &Vec<(u8,Image)>) -> Vec<(u
 
 fn build_and_test_model<I: Clone, C: Fn(&Image) -> I, D: Fn(&I,&I) -> R64>
 (label: &str, training: &Vec<(u8, Image)>, testing: &Vec<(u8,Image)>, conversion: C, distance: D) {
-    timed_op!(format!("converting training images to {}", label),
-        let training_images = convert_all(training, &conversion)
-    );
+    let training_images = print_time_milliseconds(&format!("converting training images to {}", label),
+    || convert_all(training, &conversion));
 
-    timed_op!(format!("converting testing images to {}", label),
-        let testing_images = convert_all(testing, &conversion)
-    );
+    let testing_images = print_time_milliseconds(&format!("converting testing images to {}", label),
+                                                 || convert_all(testing, &conversion));
 
     let mut model = knn::Knn::new(K, distance);
-    timed_op!(format!("training {} model (k={})", label, K),
-        model.train(&training_images)
-    );
-    timed_op!("testing",
-        let outcome = model.test(&testing_images)
-    );
+    print_time_milliseconds(&format!("training {} model (k={})", label, K),
+        || model.train(&training_images));
+    let outcome = print_time_milliseconds("testing", || model.test(&testing_images));
     print!("{}", outcome);
     println!("Error rate: {}", outcome.error_rate() * 100.0);
 }

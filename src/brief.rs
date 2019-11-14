@@ -1,7 +1,7 @@
 use crate::mnist_data::Image;
-use decorum::R64;
 use rand_distr::{Normal, Distribution};
 use rand::prelude::ThreadRng;
+use crate::bits::Bits;
 
 pub struct Descriptor {
     pairs: Vec<((usize,usize),(usize,usize))>,
@@ -39,19 +39,14 @@ impl Descriptor {
         self.height
     }
 
-    pub fn apply_to(&self, img: &Image) -> Vec<bool> {
+    pub fn apply_to(&self, img: &Image) -> Bits {
         assert_eq!(img.side(), self.width());
         assert_eq!(img.side(), self.height());
 
+        let mut bits = Bits::new();
         self.pairs.iter()
-            .map(|((x1, y1), (x2, y2))| img.get(*x1, *y1) < img.get(*x2, *y2))
-            .collect()
+            .for_each(|((x1, y1), (x2, y2))|
+                bits.add(img.get(*x1, *y1) < img.get(*x2, *y2)));
+        bits
     }
-}
-
-pub fn bitvec_distance(bv1: &Vec<bool>, bv2: &Vec<bool>) -> R64 {
-    assert_eq!(bv1.len(), bv2.len());
-    R64::from_inner((0..bv1.len())
-        .filter(|i| bv1[*i] != bv2[*i])
-        .count() as f64)
 }
