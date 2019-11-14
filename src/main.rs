@@ -19,7 +19,7 @@ use crate::pyramid::Pyramid;
 use crate::mnist_data::Image;
 use decorum::R64;
 use std::env;
-use std::collections::{HashSet, HashMap};
+use std::collections::{HashSet, BTreeMap, HashMap};
 use crate::brief::Descriptor;
 use crate::convolutional::convolutional_distance;
 use crate::patch::patchify;
@@ -29,6 +29,7 @@ const BASE_PATH: &str = "/Users/ferrer/Desktop/mnist_data/";
 const SHRINK_FACTOR: usize = 50;
 const K: usize = 7;
 const PATCH_SIZE: usize = 3;
+const NUM_NEIGHBORS: usize = 16;
 
 const HELP: &str = "help";
 const PERMUTE: &str = "permute";
@@ -81,19 +82,26 @@ fn train_and_test(args: &HashSet<String>) -> io::Result<()> {
     let mut data = ExperimentData {
         training: training_images,
         testing: testing_images,
-        descriptors: Default::default()
+        descriptors: Default::default(),
+        errors: BTreeMap::new()
     };
 
     data.add_descriptor(BRIEF, brief::Descriptor::classic_brief(8192, mnist_data::IMAGE_DIMENSION, mnist_data::IMAGE_DIMENSION));
-    data.add_descriptor(UNIFORM_NEIGHBORS, brief::Descriptor::uniform_neighbor(8, mnist_data::IMAGE_DIMENSION, mnist_data::IMAGE_DIMENSION));
+    data.add_descriptor(UNIFORM_NEIGHBORS, brief::Descriptor::uniform_neighbor(NUM_NEIGHBORS, mnist_data::IMAGE_DIMENSION, mnist_data::IMAGE_DIMENSION));
 
     data.run_all_tests_with(&args);
+
     if args.contains(PERMUTE) {
         println!("Permuting images");
         let permutation = permutation::read_permutation("image_permutation_file")?;
-        let data = data.permuted(&permutation);
-        data.run_all_tests_with(&args);
+        let mut permuted_data = data.permuted(&permutation);
+        permuted_data.run_all_tests_with(&args);
+        println!("Permuted results");
+        permuted_data.print_errors();
     }
+
+    println!("Original results");
+    data.print_errors();
 
     Ok(())
 }
@@ -131,12 +139,13 @@ fn see_label_counts<I>(labeled: &Vec<(u8, I)>, label: &str) {
 pub struct ExperimentData {
     training: Vec<(u8,Image)>,
     testing: Vec<(u8,Image)>,
-    descriptors: HashMap<String,Descriptor>
+    descriptors: HashMap<String,Descriptor>,
+    errors: BTreeMap<String,f64>
 }
 
 impl ExperimentData {
     pub fn build_and_test_model<I: Clone, C: Fn(&Image) -> I, D: Fn(&I,&I) -> R64>
-    (&self, label: &str, conversion: C, distance: D) {
+    (&mut self, label: &str, conversion: C, distance: D) {
         let training_images = print_time_milliseconds(&format!("converting training images to {}", label),
                                                       || convert_all(&self.training, &conversion));
 
@@ -148,7 +157,9 @@ impl ExperimentData {
                                 || model.train(&training_images));
         let outcome = print_time_milliseconds("testing", || model.test(&testing_images));
         print!("{}", outcome);
-        println!("Error rate: {}", outcome.error_rate() * 100.0);
+        let error_percentage = outcome.error_rate() * 100.0;
+        println!("Error rate: {}", error_percentage);
+        self.errors.insert(label.to_string(), error_percentage);
     }
 
     pub fn get_descriptor(&self, name: &str) -> Descriptor {
@@ -159,7 +170,7 @@ impl ExperimentData {
         self.descriptors.insert(name.to_string(), d);
     }
 
-    pub fn run_all_tests_with(&self, args: &HashSet<String>) {
+    pub fn run_all_tests_with(&mut self, args: &HashSet<String>) {
         if args.contains(BASELINE) {
             self.build_and_test_model(BASELINE, |v| v.clone(), euclidean_distance::euclidean_distance);
         }
@@ -167,10 +178,12 @@ impl ExperimentData {
             self.build_and_test_model(PYRAMID, Pyramid::new, pyramid::pyramid_distance);
         }
         if args.contains(BRIEF) {
-            self.build_and_test_model(&BRIEF.to_uppercase(), |img| self.get_descriptor(BRIEF).apply_to(img), bits::real_distance);
+            let descriptor = self.get_descriptor(BRIEF);
+            self.build_and_test_model(&BRIEF.to_uppercase(), |img| descriptor.apply_to(img), bits::real_distance);
         }
         if args.contains(UNIFORM_NEIGHBORS) {
-            self.build_and_test_model(UNIFORM_NEIGHBORS, |img| self.get_descriptor(UNIFORM_NEIGHBORS).apply_to(img), bits::real_distance);
+            let descriptor = self.get_descriptor(UNIFORM_NEIGHBORS);
+            self.build_and_test_model(UNIFORM_NEIGHBORS, |img| descriptor.apply_to(img), bits::real_distance);
         }
         if args.contains(PATCH) {
             self.build_and_test_model(PATCH, |img| patchify(img, PATCH_SIZE), bits::real_distance);
@@ -184,7 +197,14 @@ impl ExperimentData {
         ExperimentData {
             training: permuted_data_set(permutation, &self.training),
             testing: permuted_data_set(permutation, &self.testing),
-            descriptors: self.descriptors.clone()
+            descriptors: self.descriptors.clone(),
+            errors: BTreeMap::new()
+        }
+    }
+
+    pub fn print_errors(&self) {
+        for (k,v) in self.errors.iter() {
+            println!("{}: {}%", k, v);
         }
     }
 }

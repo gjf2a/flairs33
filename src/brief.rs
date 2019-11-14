@@ -40,7 +40,9 @@ impl Descriptor {
         let mut result = Descriptor {pairs: Vec::new(), width: width, height: height};
         ImageIterator::new(0, 0, width, height, 1)
             .for_each(|(x, y)|
-                result.pairs.push(((x, y), (x_dist.sample(&mut rng), y_dist.sample(&mut rng)))));
+                for _ in 0..neighbors {
+                    result.pairs.push(((x, y), (x_dist.sample(&mut rng), y_dist.sample(&mut rng))));
+                });
         result
     }
 
