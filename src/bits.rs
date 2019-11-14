@@ -4,6 +4,8 @@ use std::time::Instant;
 
 const NUM_BITS: u64 = 64;
 
+const LOOKUP_8_BIT: [u8; 256] = [0, 1, 1, 2, 1, 2, 2, 3, 1, 2, 2, 3, 2, 3, 3, 4, 1, 2, 2, 3, 2, 3, 3, 4, 2, 3, 3, 4, 3, 4, 4, 5, 1, 2, 2, 3, 2, 3, 3, 4, 2, 3, 3, 4, 3, 4, 4, 5, 2, 3, 3, 4, 3, 4, 4, 5, 3, 4, 4, 5, 4, 5, 5, 6, 1, 2, 2, 3, 2, 3, 3, 4, 2, 3, 3, 4, 3, 4, 4, 5, 2, 3, 3, 4, 3, 4, 4, 5, 3, 4, 4, 5, 4, 5, 5, 6, 2, 3, 3, 4, 3, 4, 4, 5, 3, 4, 4, 5, 4, 5, 5, 6, 3, 4, 4, 5, 4, 5, 5, 6, 4, 5, 5, 6, 5, 6, 6, 7, 1, 2, 2, 3, 2, 3, 3, 4, 2, 3, 3, 4, 3, 4, 4, 5, 2, 3, 3, 4, 3, 4, 4, 5, 3, 4, 4, 5, 4, 5, 5, 6, 2, 3, 3, 4, 3, 4, 4, 5, 3, 4, 4, 5, 4, 5, 5, 6, 3, 4, 4, 5, 4, 5, 5, 6, 4, 5, 5, 6, 5, 6, 6, 7, 2, 3, 3, 4, 3, 4, 4, 5, 3, 4, 4, 5, 4, 5, 5, 6, 3, 4, 4, 5, 4, 5, 5, 6, 4, 5, 5, 6, 5, 6, 6, 7, 3, 4, 4, 5, 4, 5, 5, 6, 4, 5, 5, 6, 5, 6, 6, 7, 4, 5, 5, 6, 5, 6, 6, 7, 5, 6, 6, 7, 6, 7, 7, 8];
+
 pub fn log2(n: u64) -> u8 {
     assert!(n >= 1);
     let mut log = 0;
@@ -59,7 +61,8 @@ impl Bits {
 
     pub fn count_bits_on(&self) -> usize {
         //self.bits.iter().map(|word| count_bits_on(*word)).sum()
-        self.bits.iter().map(|word| num_bits(*word) as usize).sum()
+        //self.bits.iter().map(|word| num_bits(*word) as usize).sum()
+        self.bits.iter().map(|word| count_lookup(*word) as usize).sum()
     }
 }
 
@@ -93,6 +96,17 @@ fn count_bits_on(value: u64) -> usize {
     count
 }
 
+fn count_lookup(value: u64) -> u8 {
+    let mut count = 0;
+    for i in 0..8 {
+        let shift = i * 8;
+        let mask: u64 = 0xFF << shift;
+        let bits = (value & mask) >> shift;
+        count += LOOKUP_8_BIT[bits as usize];
+    }
+    count
+}
+
 pub fn distance(b1: &Bits, b2: &Bits) -> usize {
     (b1 ^ b2).count_bits_on()
 }
@@ -120,6 +134,20 @@ pub fn time<F: Fn()>(label: &str, f: F) {
     f();
     println!("Finished {} after {} milliseconds", label,
              Instant::now().duration_since(start).as_millis());
+}
+
+pub fn time_milliseconds<N, F: Fn() -> N>(f: F) -> (N, u128) {
+    let start = Instant::now();
+    let data = f();
+    let millis = Instant::now().duration_since(start).as_millis();
+    (data, millis)
+}
+
+pub fn print_time_milliseconds<N, F: Fn() -> N>(label: &str, f: F) -> N {
+    println!("Started {}...", label);
+    let result = time_milliseconds(f);
+    println!("Finished {} after {} milliseconds", label, result.1);
+    result.0
 }
 
 #[cfg(test)]
@@ -201,7 +229,8 @@ mod tests {
         let mut bits_2 = Bits::new();
         baseline_2.iter().for_each(|b| bits_2.add(*b));
 
-        time("baseline distance", || println!("{}", bitvec_distance(&baseline_1, &baseline_2)));
-        time("bits distance", || println!("{}", real_distance(&bits_1, &bits_2)));
+        let baseline_distance = print_time_milliseconds("baseline distance", || bitvec_distance(&baseline_1, &baseline_2));
+        let bits_distance = print_time_milliseconds("bits distance", || real_distance(&bits_1, &bits_2));
+        assert_eq!(baseline_distance, bits_distance);
     }
 }
