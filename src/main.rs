@@ -9,6 +9,8 @@ mod brief;
 mod kmeans;
 mod patch;
 mod convolutional;
+mod bits;
+#[macro_use] mod timing;
 
 use std::io;
 use crate::training_harness::Classifier;
@@ -27,15 +29,6 @@ const BASE_PATH: &str = "/Users/ferrer/Desktop/mnist_data/";
 const SHRINK_FACTOR: usize = 50;
 const K: usize = 7;
 const PATCH_SIZE: usize = 3;
-
-macro_rules! timed_op {
-    ($label:expr, $line:stmt) => {
-        println!("Started {}...", $label);
-        let start = Instant::now();
-        $line
-        println!("Finished {} after {} seconds", $label, Instant::now().duration_since(start).as_secs());
-    }
-}
 
 const HELP: &str = "help";
 const PERMUTE: &str = "permute";
@@ -110,7 +103,6 @@ fn run_all_tests_with(args: &HashSet<String>, training_images: &Vec<(u8,Image)>,
         build_and_test_model(&BRIEF.to_uppercase(), &training_images, &testing_images, |img| descriptor.apply_to(img), brief::bitvec_distance);
     }
     if args.contains(PATCH) {
-        //build_and_test_model(PATCH, &training_images, &testing_images, |v| v.clone(), |img1, img2| patch_distance(img1, img2, PATCH_SIZE));
         build_and_test_model(PATCH, &training_images, &testing_images, |img| patchify(img, PATCH_SIZE), brief::bitvec_distance);
     }
     if args.contains(CONVOLUTIONAL_1) {
