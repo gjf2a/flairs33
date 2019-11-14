@@ -1,7 +1,7 @@
 use crate::mnist_data::Image;
 use rand_distr::{Normal, Distribution};
 use rand::prelude::ThreadRng;
-use crate::bits::Bits;
+use crate::bits::BitArray;
 
 pub struct Descriptor {
     pairs: Vec<((usize,usize),(usize,usize))>,
@@ -39,11 +39,11 @@ impl Descriptor {
         self.height
     }
 
-    pub fn apply_to(&self, img: &Image) -> Bits {
+    pub fn apply_to(&self, img: &Image) -> BitArray {
         assert_eq!(img.side(), self.width());
         assert_eq!(img.side(), self.height());
 
-        let mut bits = Bits::new();
+        let mut bits = BitArray::new();
         self.pairs.iter()
             .for_each(|((x1, y1), (x2, y2))|
                 bits.add(img.get(*x1, *y1) < img.get(*x2, *y2)));
