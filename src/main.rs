@@ -38,9 +38,11 @@ const PYRAMID: &str = "pyramid";
 const BRIEF: &str = "brief";
 const CONVOLUTIONAL_1: &str = "convolutional1";
 const PATCH: &str = "patch";
+const PATCH_7: &str = "patch_7";
 const SHRINK: &str = "shrink";
 const UNIFORM_NEIGHBORS: &str = "uniform_neighbors";
 const GAUSSIAN_NEIGHBORS: &str = "gaussian_neighbors";
+const GAUSSIAN_7: &str = "gaussian_7";
 
 fn main() -> io::Result<()> {
     let args: HashSet<String> = env::args().collect();
@@ -62,7 +64,10 @@ fn help_message() {
     println!("\t{}: knn with pyramid images", PYRAMID);
     println!("\t{}: knn with BRIEF descriptors", BRIEF);
     println!("\t{}: knn with uniform neighbor BRIEF", UNIFORM_NEIGHBORS);
-    println!("\t{}: knn with convolutional patch BRIEF descriptors", PATCH);
+    println!("\t{}: knn with gaussian neighbor BRIEF (stdev 1/3 side)", GAUSSIAN_NEIGHBORS);
+    println!("\t{}: knn with gaussian neighbor BRIEF (stdev 1/7 side)", GAUSSIAN_7);
+    println!("\t{}: knn with convolutional patch 3x3 BRIEF descriptors", PATCH);
+    println!("\t{}: knn with convolutional patch 7x7 BRIEF descriptors", PATCH_7);
     println!("\t{}: knn with convolutional distance metric (1 level)", CONVOLUTIONAL_1);
 }
 
@@ -88,6 +93,8 @@ fn train_and_test(args: &HashSet<String>) -> io::Result<()> {
 
     data.add_descriptor(BRIEF, brief::Descriptor::classic_brief(8192, mnist_data::IMAGE_DIMENSION, mnist_data::IMAGE_DIMENSION));
     data.add_descriptor(UNIFORM_NEIGHBORS, brief::Descriptor::uniform_neighbor(NUM_NEIGHBORS, mnist_data::IMAGE_DIMENSION, mnist_data::IMAGE_DIMENSION));
+    data.add_descriptor(GAUSSIAN_NEIGHBORS, brief::Descriptor::gaussian_neighbor(NUM_NEIGHBORS, mnist_data::IMAGE_DIMENSION / 3, mnist_data::IMAGE_DIMENSION, mnist_data::IMAGE_DIMENSION));
+    data.add_descriptor(GAUSSIAN_7, brief::Descriptor::gaussian_neighbor(NUM_NEIGHBORS, mnist_data::IMAGE_DIMENSION / 7, mnist_data::IMAGE_DIMENSION, mnist_data::IMAGE_DIMENSION));
 
     data.run_all_tests_with(&args);
 
@@ -185,8 +192,15 @@ impl ExperimentData {
             let descriptor = self.get_descriptor(UNIFORM_NEIGHBORS);
             self.build_and_test_model(UNIFORM_NEIGHBORS, |img| descriptor.apply_to(img), bits::real_distance);
         }
+        if args.contains(GAUSSIAN_NEIGHBORS) {
+            let descriptor = self.get_descriptor(GAUSSIAN_NEIGHBORS);
+            self.build_and_test_model(GAUSSIAN_NEIGHBORS, |img| descriptor.apply_to(img), bits::real_distance);
+        }
         if args.contains(PATCH) {
             self.build_and_test_model(PATCH, |img| patchify(img, PATCH_SIZE), bits::real_distance);
+        }
+        if args.contains(PATCH_7) {
+            self.build_and_test_model(PATCH_7, |img| patchify(img, 7), bits::real_distance);
         }
         if args.contains(CONVOLUTIONAL_1) {
             self.build_and_test_model(CONVOLUTIONAL_1, |v| v.clone(), |img1, img2| convolutional_distance(img1, img2, 1));

@@ -46,6 +46,22 @@ impl Descriptor {
         result
     }
 
+    pub fn gaussian_neighbor(neighbors: usize, stdev: usize, width: usize, height: usize) -> Descriptor {
+        let x_dist = Normal::new(0 as f64, stdev as f64).unwrap();
+        let y_dist = Normal::new(0 as f64, stdev as f64).unwrap();
+        let mut result = Descriptor {pairs: Vec::new(), width: width, height: height};
+        ImageIterator::new(0, 0, width, height, 1)
+            .for_each(|(x, y)|
+                for _ in 0..neighbors {
+                    let x_other = random_bounded_normal_value(&x_dist, x, 0, width);
+                    let y_other = random_bounded_normal_value(&y_dist, y, 0, height);
+                    assert!(x_other < width);
+                    assert!(y_other < height);
+                    result.pairs.push(((x, y), (x_other, y_other)));
+                });
+        result
+    }
+
     pub fn width(&self) -> usize {
         self.width
     }
@@ -63,5 +79,28 @@ impl Descriptor {
             .for_each(|((x1, y1), (x2, y2))|
                 bits.add(img.get(*x1, *y1) < img.get(*x2, *y2)));
         bits
+    }
+}
+
+pub fn random_bounded_normal_value(dist: &Normal<f64>, start_value: usize, min: usize, max: usize) -> usize {
+    let mut rng = ThreadRng::default();
+    let sample = dist.sample(&mut rng).abs() as usize;
+    let min_diff = start_value - min;
+    let max_diff = max - start_value;
+
+    if sample < min_diff && sample < max_diff {
+        return if rand::random() {
+            start_value + sample
+        } else {
+            start_value - sample
+        }
+    } else if sample < min_diff {
+        return start_value - sample;
+    } else if sample < max_diff {
+        return start_value + sample;
+    } else if rand::random() {
+        return min;
+    } else {
+        return max - 1;
     }
 }
