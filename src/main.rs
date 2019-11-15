@@ -14,7 +14,6 @@ mod timing;
 
 use std::io;
 use crate::training_harness::Classifier;
-use crate::hash_histogram::HashHistogram;
 use crate::pyramid::Pyramid;
 use crate::mnist_data::Image;
 use decorum::R64;
@@ -25,6 +24,8 @@ use crate::convolutional::convolutional_distance;
 use crate::patch::patchify;
 use crate::timing::print_time_milliseconds;
 
+const SHRINK_SEQUENCE: [usize; 5] = [50, 20, 10, 5, 2];
+
 const BASE_PATH: &str = "/Users/ferrer/Desktop/mnist_data/";
 const SHRINK_FACTOR: usize = 50;
 const K: usize = 7;
@@ -32,14 +33,17 @@ const PATCH_SIZE: usize = 3;
 const NUM_NEIGHBORS: usize = 16;
 
 const HELP: &str = "help";
+const SHRINK: &str = "shrink";
 const PERMUTE: &str = "permute";
+const SEQ: &str = "sequence";
+
 const BASELINE: &str = "baseline";
 const PYRAMID: &str = "pyramid";
 const BRIEF: &str = "brief";
+const UNIFORM_BRIEF: &str = "uniform_brief";
 const CONVOLUTIONAL_1: &str = "convolutional1";
 const PATCH: &str = "patch";
 const PATCH_7: &str = "patch_7";
-const SHRINK: &str = "shrink";
 const UNIFORM_NEIGHBORS: &str = "uniform_neighbors";
 const GAUSSIAN_NEIGHBORS: &str = "gaussian_neighbors";
 const GAUSSIAN_7: &str = "gaussian_7";
@@ -59,10 +63,12 @@ fn help_message() {
     println!("\t{}: print this message", HELP);
     println!("\t{}: runs additional experiment that permutes image pixels", PERMUTE);
     println!("\t{}: Use only 1 out of {} training/testing images", SHRINK, SHRINK_FACTOR);
+    println!("\t{}: Use 1/50, 1/20, 1/10, 1/5, and 1/2 training/testing images", SEQ);
     println!("\nAlgorithmic options:");
     println!("\t{}: straightforward knn", BASELINE);
     println!("\t{}: knn with pyramid images", PYRAMID);
-    println!("\t{}: knn with BRIEF descriptors", BRIEF);
+    println!("\t{}: knn with gaussian BRIEF descriptors", BRIEF);
+    println!("\t{}: knn with uniform BRIEF descriptors", UNIFORM_BRIEF);
     println!("\t{}: knn with uniform neighbor BRIEF", UNIFORM_NEIGHBORS);
     println!("\t{}: knn with gaussian neighbor BRIEF (stdev 1/3 side)", GAUSSIAN_NEIGHBORS);
     println!("\t{}: knn with gaussian neighbor BRIEF (stdev 1/7 side)", GAUSSIAN_7);
@@ -75,15 +81,27 @@ fn train_and_test(args: &HashSet<String>) -> io::Result<()> {
     let mut training_images = load_data_set("train")?;
     let mut testing_images = load_data_set("t10k")?;
 
-    if args.contains(SHRINK) {
-        println!("Shrinking by {}", SHRINK_FACTOR);
-        training_images = mnist_data::discard(&training_images, SHRINK_FACTOR);
-        testing_images = mnist_data::discard(&testing_images, SHRINK_FACTOR);
+    if args.contains(SEQ) {
+        for shrink in SHRINK_SEQUENCE.iter() {
+            println!("Shrinking by {}", shrink);
+            run_experiments(args, mnist_data::discard(&training_images, *shrink),
+                            mnist_data::discard(&testing_images, *shrink))?;
+        }
+
+    } else {
+        if args.contains(SHRINK) {
+            println!("Shrinking by {}", SHRINK_FACTOR);
+            training_images = mnist_data::discard(&training_images, SHRINK_FACTOR);
+            testing_images = mnist_data::discard(&testing_images, SHRINK_FACTOR);
+        }
+
+        run_experiments(args, training_images.clone(), testing_images.clone())?;
     }
 
-    see_label_counts(&training_images, "Training");
-    see_label_counts(&testing_images, "Testing");
+    Ok(())
+}
 
+fn run_experiments(args: &HashSet<String>, training_images: Vec<(u8,Image)>, testing_images: Vec<(u8,Image)>) -> io::Result<()> {
     let mut data = ExperimentData {
         training: training_images,
         testing: testing_images,
@@ -91,7 +109,8 @@ fn train_and_test(args: &HashSet<String>) -> io::Result<()> {
         errors: BTreeMap::new()
     };
 
-    data.add_descriptor(BRIEF, brief::Descriptor::classic_brief(8192, mnist_data::IMAGE_DIMENSION, mnist_data::IMAGE_DIMENSION));
+    data.add_descriptor(BRIEF, brief::Descriptor::classic_gaussian_brief(8192, mnist_data::IMAGE_DIMENSION, mnist_data::IMAGE_DIMENSION));
+    data.add_descriptor(UNIFORM_BRIEF, brief::Descriptor::classic_uniform_brief(8192, mnist_data::IMAGE_DIMENSION, mnist_data::IMAGE_DIMENSION));
     data.add_descriptor(UNIFORM_NEIGHBORS, brief::Descriptor::uniform_neighbor(NUM_NEIGHBORS, mnist_data::IMAGE_DIMENSION, mnist_data::IMAGE_DIMENSION));
     data.add_descriptor(GAUSSIAN_NEIGHBORS, brief::Descriptor::gaussian_neighbor(NUM_NEIGHBORS, mnist_data::IMAGE_DIMENSION / 3, mnist_data::IMAGE_DIMENSION, mnist_data::IMAGE_DIMENSION));
     data.add_descriptor(GAUSSIAN_7, brief::Descriptor::gaussian_neighbor(NUM_NEIGHBORS, mnist_data::IMAGE_DIMENSION / 7, mnist_data::IMAGE_DIMENSION, mnist_data::IMAGE_DIMENSION));
@@ -105,11 +124,11 @@ fn train_and_test(args: &HashSet<String>) -> io::Result<()> {
         permuted_data.run_all_tests_with(&args);
         println!("Permuted results");
         permuted_data.print_errors();
+        println!();
     }
 
     println!("Original results");
     data.print_errors();
-
     Ok(())
 }
 
@@ -132,14 +151,6 @@ fn permuted_data_set(permutation: &Vec<usize>, data: &Vec<(u8,Image)>) -> Vec<(u
 
 fn convert_all<I, C: Fn(&Image) -> I>(labeled_list: &Vec<(u8, Image)>, conversion: C) -> Vec<(u8, I)> {
     labeled_list.iter().map(|(label, img)| (*label, conversion(img))).collect()
-}
-
-fn see_label_counts<I>(labeled: &Vec<(u8, I)>, label: &str) {
-    let mut label_counts = HashHistogram::new();
-    for img in labeled {
-        label_counts.bump(img.0);
-    }
-    println!("{} labels: {}", label, label_counts);
 }
 
 #[derive(Clone)]
@@ -185,26 +196,38 @@ impl ExperimentData {
             self.build_and_test_model(PYRAMID, Pyramid::new, pyramid::pyramid_distance);
         }
         if args.contains(BRIEF) {
-            let descriptor = self.get_descriptor(BRIEF);
-            self.build_and_test_model(&BRIEF.to_uppercase(), |img| descriptor.apply_to(img), bits::real_distance);
+            self.build_and_test_descriptor(BRIEF);
+        }
+        if args.contains(UNIFORM_BRIEF) {
+            self.build_and_test_descriptor(UNIFORM_BRIEF);
         }
         if args.contains(UNIFORM_NEIGHBORS) {
-            let descriptor = self.get_descriptor(UNIFORM_NEIGHBORS);
-            self.build_and_test_model(UNIFORM_NEIGHBORS, |img| descriptor.apply_to(img), bits::real_distance);
+            self.build_and_test_descriptor(UNIFORM_NEIGHBORS);
         }
         if args.contains(GAUSSIAN_NEIGHBORS) {
-            let descriptor = self.get_descriptor(GAUSSIAN_NEIGHBORS);
-            self.build_and_test_model(GAUSSIAN_NEIGHBORS, |img| descriptor.apply_to(img), bits::real_distance);
+            self.build_and_test_descriptor(GAUSSIAN_NEIGHBORS);
+        }
+        if args.contains(GAUSSIAN_7) {
+            self.build_and_test_descriptor(GAUSSIAN_7);
         }
         if args.contains(PATCH) {
-            self.build_and_test_model(PATCH, |img| patchify(img, PATCH_SIZE), bits::real_distance);
+            self.build_and_test_patch(PATCH, PATCH_SIZE);
         }
         if args.contains(PATCH_7) {
-            self.build_and_test_model(PATCH_7, |img| patchify(img, 7), bits::real_distance);
+            self.build_and_test_patch(PATCH_7, 7);
         }
         if args.contains(CONVOLUTIONAL_1) {
             self.build_and_test_model(CONVOLUTIONAL_1, |v| v.clone(), |img1, img2| convolutional_distance(img1, img2, 1));
         }
+    }
+
+    fn build_and_test_descriptor(&mut self, descriptor_name: &str) {
+        let descriptor = self.get_descriptor(descriptor_name);
+        self.build_and_test_model(descriptor_name, |img| descriptor.apply_to(img), bits::real_distance);
+    }
+
+    fn build_and_test_patch(&mut self, label: &str, patch_size: usize) {
+        self.build_and_test_model(label, |img| patchify(img, patch_size), bits::real_distance);
     }
 
     pub fn permuted(&self, permutation: &Vec<usize>) -> ExperimentData {

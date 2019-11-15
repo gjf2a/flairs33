@@ -19,7 +19,7 @@ fn constrained_random(dist: &Normal<f64>, rng: &mut ThreadRng, max: usize) -> us
 }
 
 impl Descriptor {
-    pub fn classic_brief(n: usize, width: usize, height: usize) -> Descriptor {
+    pub fn classic_gaussian_brief(n: usize, width: usize, height: usize) -> Descriptor {
         let mut rng = rand::thread_rng();
         let x_dist = Normal::new((width/2) as f64, (width/6) as f64).unwrap();
         let y_dist = Normal::new((height/2) as f64, (height/6) as f64).unwrap();
@@ -29,6 +29,18 @@ impl Descriptor {
                                 constrained_random(&y_dist, &mut rng, height)),
                               (constrained_random(&x_dist, &mut rng, width),
                                 constrained_random(&y_dist, &mut rng, height))));
+        }
+        result
+    }
+
+    pub fn classic_uniform_brief(n: usize, width: usize, height: usize) -> Descriptor {
+        let mut rng = rand::thread_rng();
+        let x_dist = Uniform::new(0, width);
+        let y_dist = Uniform::new(0, height);
+        let mut result = Descriptor {pairs: Vec::new(), width: width, height: height};
+        for _ in 0..n {
+            result.pairs.push(((x_dist.sample(&mut rng), y_dist.sample(&mut rng)),
+                              (x_dist.sample(&mut rng), y_dist.sample(&mut rng))));
         }
         result
     }
