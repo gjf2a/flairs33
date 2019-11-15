@@ -1,4 +1,4 @@
-use crate::mnist_data::{Image, ImageIterator};
+use crate::mnist_data::{Image, ImageIterator, Grid};
 use crate::bits::BitArray;
 
 pub fn patchify(img: &Image, patch_size: usize) -> BitArray {

@@ -12,6 +12,51 @@ pub struct Image {
     side_size: usize,
 }
 
+pub trait Grid<T> {
+    fn add(&mut self, pixel: T);
+    fn get(&self, x: usize, y: usize) -> T;
+    fn side(&self) -> usize;
+    fn len(&self) -> usize;
+
+    fn in_bounds(&self, x: isize, y: isize) -> bool {
+        x >= 0 && y >= 0 && x < self.side() as isize && y < self.side() as isize
+    }
+
+    fn option_get(&self, x: isize, y: isize) -> Option<T> {
+        if self.in_bounds(x, y) { Some(self.get(x as usize, y as usize)) } else { None }
+    }
+
+    fn x_y_iter(&self) -> ImageIterator<usize> {
+        ImageIterator::new(0, 0, self.side(), self.side(), 1)
+    }
+
+    fn x_y_step_iter(&self, step_size: usize) -> ImageIterator<usize> {
+        ImageIterator::new(0, 0, self.side(), self.side(), step_size)
+    }
+}
+
+impl Grid<u8> for Image {
+    fn add(&mut self, pixel: u8) {
+        self.pixels.push(pixel);
+        if self.pixels.len() > self.side_size.pow(2) {
+            self.side_size += 1;
+        }
+    }
+
+    fn get(&self, x: usize, y: usize) -> u8 {
+        assert!(self.in_bounds(x as isize, y as isize));
+        self.pixels[y * self.side_size + x]
+    }
+
+    fn side(&self) -> usize {
+        self.side_size
+    }
+
+    fn len(&self) -> usize {
+        self.pixels.len()
+    }
+}
+
 impl Image {
     pub fn new() -> Image {
         Image {pixels: Vec::new(), side_size: 0}
@@ -22,42 +67,6 @@ impl Image {
         let mut result = Image::new();
         v.iter().for_each(|p| result.add(*p));
         result
-    }
-
-    pub fn add(&mut self, pixel: u8) {
-        self.pixels.push(pixel);
-        if self.pixels.len() > self.side_size.pow(2) {
-            self.side_size += 1;
-        }
-    }
-
-    pub fn in_bounds(&self, x: isize, y: isize) -> bool {
-        x >= 0 && y >= 0 && x < self.side() as isize && y < self.side() as isize
-    }
-
-    pub fn get(&self, x: usize, y: usize) -> u8 {
-        assert!(self.in_bounds(x as isize, y as isize));
-        self.pixels[y * self.side_size + x]
-    }
-
-    pub fn option_get(&self, x: isize, y: isize) -> Option<u8> {
-        if self.in_bounds(x, y) {Some(self.get(x as usize, y as usize))} else {None}
-    }
-
-    pub fn x_y_iter(&self) -> ImageIterator<usize> {
-        ImageIterator::new(0, 0, self.side(), self.side(), 1)
-    }
-
-    pub fn x_y_step_iter(&self, step_size: usize) -> ImageIterator<usize> {
-        ImageIterator::new(0, 0, self.side(), self.side(), step_size)
-    }
-
-    pub fn side(&self) -> usize {
-        self.side_size
-    }
-
-    pub fn len(&self) -> usize {
-        self.pixels.len()
     }
 
     pub fn permuted(&self, permutation: &Vec<usize>) -> Image {

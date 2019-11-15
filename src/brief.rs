@@ -1,4 +1,4 @@
-use crate::mnist_data::{Image, ImageIterator};
+use crate::mnist_data::{Image, ImageIterator, Grid};
 use rand_distr::{Normal, Distribution};
 use rand::prelude::ThreadRng;
 use crate::bits::BitArray;

@@ -11,6 +11,7 @@ mod patch;
 mod convolutional;
 mod bits;
 mod timing;
+mod brief_convolutional;
 
 use std::io;
 use crate::training_harness::Classifier;

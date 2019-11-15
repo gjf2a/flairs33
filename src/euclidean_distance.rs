@@ -1,4 +1,4 @@
-use crate::mnist_data::Image;
+use crate::mnist_data::{Image, Grid};
 use decorum::R64;
 
 pub fn euclidean_distance(img1: &Image, img2: &Image) -> R64 {

@@ -1,4 +1,4 @@
-use crate::mnist_data::Image;
+use crate::mnist_data::{Image, Grid};
 use decorum::R64;
 use crate::euclidean_distance::euclidean_distance;
 
