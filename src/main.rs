@@ -21,7 +21,7 @@ use decorum::R64;
 use std::env;
 use std::collections::{HashSet, BTreeMap, HashMap};
 use crate::brief::Descriptor;
-use crate::convolutional::convolutional_distance;
+use crate::convolutional::{convolutional_distance, kernelize_all, kernelized_distance};
 use crate::patch::patchify;
 use crate::timing::print_time_milliseconds;
 
@@ -48,6 +48,7 @@ const PATCH_7: &str = "patch_7";
 const UNIFORM_NEIGHBORS: &str = "uniform_neighbors";
 const GAUSSIAN_NEIGHBORS: &str = "gaussian_neighbors";
 const GAUSSIAN_7: &str = "gaussian_7";
+const BRIEF_CONVOLUTIONAL: &str = "brief_convolutional";
 
 fn main() -> io::Result<()> {
     let args: HashSet<String> = env::args().collect();
@@ -75,6 +76,7 @@ fn help_message() {
     println!("\t{}: knn with gaussian neighbor BRIEF (stdev 1/7 side)", GAUSSIAN_7);
     println!("\t{}: knn with convolutional patch 3x3 BRIEF descriptors", PATCH);
     println!("\t{}: knn with convolutional patch 7x7 BRIEF descriptors", PATCH_7);
+    println!("\t{}: knn with BRIEF 3x3 convolutional patch and projected filters", BRIEF_CONVOLUTIONAL);
     println!("\t{}: knn with convolutional distance metric (1 level)", CONVOLUTIONAL_1);
 }
 
@@ -165,11 +167,16 @@ pub struct ExperimentData {
 impl ExperimentData {
     pub fn build_and_test_model<I: Clone, C: Fn(&Image) -> I, D: Fn(&I,&I) -> R64>
     (&mut self, label: &str, conversion: C, distance: D) {
+        self.build_and_test_converting_all(label, |v| convert_all(v, &conversion), distance);
+    }
+
+    pub fn build_and_test_converting_all<I: Clone, C: Fn(&Vec<(u8,Image)>) -> Vec<(u8,I)>, D: Fn(&I,&I) -> R64>
+    (&mut self, label: &str, conversion: C, distance: D) {
         let training_images = print_time_milliseconds(&format!("converting training images to {}", label),
-                                                      || convert_all(&self.training, &conversion));
+                                                      || conversion(&self.training));
 
         let testing_images = print_time_milliseconds(&format!("converting testing images to {}", label),
-                                                     || convert_all(&self.testing, &conversion));
+                                                     || conversion(&self.testing));
 
         let mut model = knn::Knn::new(K, distance);
         print_time_milliseconds(&format!("training {} model (k={})", label, K),
@@ -218,7 +225,10 @@ impl ExperimentData {
             self.build_and_test_patch(PATCH_7, 7);
         }
         if args.contains(CONVOLUTIONAL_1) {
-            self.build_and_test_model(CONVOLUTIONAL_1, |v| v.clone(), |img1, img2| convolutional_distance(img1, img2, 1));
+            self.build_and_test_converting_all(CONVOLUTIONAL_1, |images| kernelize_all(images, 1), kernelized_distance);
+        }
+        if args.contains(BRIEF_CONVOLUTIONAL) {
+            self.build_and_test_model(BRIEF_CONVOLUTIONAL, |img| brief_convolutional::to_kernelized(img, 2, 2), brief_convolutional::kernelized_distance);
         }
     }
 

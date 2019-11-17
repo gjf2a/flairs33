@@ -34,7 +34,7 @@ fn initial_plus_plus<T: Clone + Eq, D: Fn(&T,&T) -> R64>(k: usize, distance: &D,
     result.push(data[range.sample(&mut rng)].clone());
     while result.len() < k {
         let squared_distances: Vec<f64> = data.iter()
-            .map(|d| distance(d, result.last().unwrap()).into_inner().powf(2.0))
+            .map(|d| 1.0 + distance(d, result.last().unwrap()).into_inner().powf(2.0))
             .collect();
         let dist = WeightedIndex::new(&squared_distances).unwrap();
         result.push(data[dist.sample(&mut rng)].clone());
