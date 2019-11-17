@@ -3,6 +3,7 @@ use rand_distr::{Normal, Distribution};
 use rand::prelude::ThreadRng;
 use crate::bits::BitArray;
 use rand::distributions::Uniform;
+use crate::hash_histogram::HashHistogram;
 
 #[derive(Clone)]
 pub struct Descriptor {
@@ -90,6 +91,22 @@ impl Descriptor {
         self.pairs.iter()
             .for_each(|((x1, y1), (x2, y2))|
                 bits.add(img.get(*x1, *y1) < img.get(*x2, *y2)));
+        bits
+    }
+
+    pub fn evaluate(&self, img: &Image, x1: usize, y1: usize, x2: usize, y2: usize) -> bool {
+        img.get(x1, y1) < img.get(x2, y2)
+    }
+
+    pub fn majority_image(&self, img: &Image) -> BitArray {
+        let mut counts = HashHistogram::new();
+        self.pairs.iter()
+            .for_each(|((x1, y1), (x2, y2))|
+                counts.bump((x1, y1, img.get(*x1, *y1) < img.get(*x2, *y2))));
+        let mut bits = BitArray::new();
+        img.x_y_iter()
+            .for_each(|(x, y)|
+                bits.add(counts.get((&x, &y, true)) > counts.get((&x, &y, false))));
         bits
     }
 }

@@ -71,78 +71,7 @@ pub fn apply_kernel_to(img: &Image, kernel: &Image) -> Image {
 pub fn pixelize(distance: R64) -> u8 {
     let max_distance = ((std::u8::MAX as f64).powf(2.0) * (KERNEL_SIZE.pow(2) as f64)).powf(0.5);
     let distance_to_pixel_scale = (std::u8::MAX as f64) / max_distance;
-    (distance.into_inner() * distance_to_pixel_scale) as u8
-}
-
-pub fn convolutional_distance(img1: &Image, img2: &Image, levels: usize) -> R64 {
-    assert!(levels > 0);
-    let layers = make_convolutional_layers(img1, img2, NUM_KERNELS, STRIDE, levels);
-    let final_layer_1 = layers.0.last().unwrap();
-    let final_layer_2 = layers.1.last().unwrap();
-    assert_eq!(final_layer_1.len(), final_layer_2.len());
-    (0..final_layer_1.len())
-        .map(|i| euclidean_distance(&final_layer_1[i], &final_layer_2[i]))
-        .sum()
-}
-
-pub fn make_convolutional_layers(img1: &Image, img2: &Image, kernels: usize, stride: usize, levels: usize) -> (Vec<Vec<Image>>,Vec<Vec<Image>>) {
-    let mut result = (vec![vec![img1.clone()]], vec![vec![img2.clone()]]);
-    for _ in 0..levels {
-        let frontier1 = result.0.last().unwrap();
-        let frontier2 = result.1.last().unwrap();
-        let mut projections1 = Vec::new();
-        let mut projections2 = Vec::new();
-
-        assert_eq!(frontier1.len(), frontier2.len());
-        for i in 0..frontier1.len() {
-            let kernels = find_filters_from(&frontier1[i], &frontier2[i], kernels, KERNEL_SIZE);
-            projections1.append(&mut project_through(&frontier1[i], &kernels, stride));
-            projections2.append(&mut project_through(&frontier2[i], &kernels, stride));
-        }
-        result.0.push(projections1);
-        result.1.push(projections2);
-    }
-    result
-}
-
-pub fn project_through(src: &Image, kernels: &Vec<Image>, stride: usize) -> Vec<Image> {
-    let mut distances: Vec<Vec<R64>> = (0..kernels.len()).map(|_| Vec::new()).collect();
-    for (x, y) in src.x_y_step_iter(stride) {
-        for k in 0..kernels.len() {
-            distances[k].push(euclidean_distance(&kernels[k], &src.subimage(x, y, kernels[k].side())));
-        }
-    }
-
-    let min = min_across(&distances).into_inner();
-    let max = max_across(&distances).into_inner();
-
-    let mut result: Vec<Image> = (0..kernels.len()).map(|_| Image::new()).collect();
-    for k in 0..kernels.len() {
-        for distance in distances[k].iter() {
-            result[k].add(scale(distance.into_inner(), min, max))
-        }
-    }
-    result
-}
-
-pub fn max_across(distances: &Vec<Vec<R64>>) -> R64 {
-    *(distances.iter().filter_map(|v| v.iter().max()).max().unwrap())
-}
-
-pub fn min_across(distances: &Vec<Vec<R64>>) -> R64 {
-    *(distances.iter().filter_map(|v| v.iter().min()).min().unwrap())
-}
-
-pub fn scale(value: f64, min: f64, max: f64) -> u8 {
-    let float_scale = 1.0 - ((value - min) / (max - min));
-    (float_scale * std::u8::MAX as f64) as u8
-}
-
-pub fn find_filters_from(img1: &Image, img2: &Image, num_filters: usize, kernel_size: usize) -> Vec<Image> {
-    let mut raw_filters: Vec<Image> = Vec::new();
-    add_kernels_from_to(img1, &mut raw_filters, kernel_size);
-    add_kernels_from_to(img2, &mut raw_filters, kernel_size);
-    kmeans::Kmeans::new(num_filters, &raw_filters, euclidean_distance, image_mean).move_means()
+    (distance.into_inner().powf(0.5) * distance_to_pixel_scale) as u8
 }
 
 fn add_kernels_from_to(img: &Image, raw_filters: &mut Vec<Image>, kernel_size: usize) {
@@ -153,13 +82,6 @@ fn add_kernels_from_to(img: &Image, raw_filters: &mut Vec<Image>, kernel_size: u
 #[cfg(test)]
 mod tests {
     use super::*;
-
-    #[test]
-    fn test_scale() {
-        assert_eq!(0, scale(100.0, 50.0, 100.0));
-        assert_eq!(255, scale(50.0, 50.0, 100.0));
-        assert_eq!(155, scale(69.6078, 50.0, 100.0));
-    }
 
     #[test]
     fn test_kernels() {
@@ -180,19 +102,5 @@ mod tests {
             }
         }
         true
-    }
-
-    #[test]
-    fn test_projection() {
-        let img = Image::from_vec(&(1..10).collect());
-        let kernels =
-            vec![Image::from_vec(&(0..4).collect()), Image::from_vec(&(6..10).collect())];
-        let projections = project_through(&img, &kernels, 1);
-        let targets = vec![Image::from_vec(&vec![245, 252, 255, 250, 244, 224, 221, 157, 109]),
-            Image::from_vec(&vec![0, 36, 67, 62, 157, 196, 120, 244, 253])];
-        assert_eq!(projections.len(), targets.len());
-        for i in 0..targets.len() {
-            assert_eq!(targets[i], projections[i]);
-        }
     }
 }

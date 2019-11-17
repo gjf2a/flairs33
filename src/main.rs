@@ -21,7 +21,7 @@ use decorum::R64;
 use std::env;
 use std::collections::{HashSet, BTreeMap, HashMap};
 use crate::brief::Descriptor;
-use crate::convolutional::{convolutional_distance, kernelize_all, kernelized_distance};
+use crate::convolutional::{kernelize_all, kernelized_distance};
 use crate::patch::patchify;
 use crate::timing::print_time_milliseconds;
 
@@ -32,6 +32,7 @@ const SHRINK_FACTOR: usize = 50;
 const K: usize = 7;
 const PATCH_SIZE: usize = 3;
 const NUM_NEIGHBORS: usize = 16;
+const CLASSIC_BRIEF_PAIRS: usize = mnist_data::IMAGE_DIMENSION * mnist_data::IMAGE_DIMENSION * NUM_NEIGHBORS;
 
 const HELP: &str = "help";
 const SHRINK: &str = "shrink";
@@ -49,6 +50,7 @@ const UNIFORM_NEIGHBORS: &str = "uniform_neighbors";
 const GAUSSIAN_NEIGHBORS: &str = "gaussian_neighbors";
 const GAUSSIAN_7: &str = "gaussian_7";
 const BRIEF_CONVOLUTIONAL: &str = "brief_convolutional";
+const BRIEF_MAJORITY: &str = "brief_majority";
 
 fn main() -> io::Result<()> {
     let args: HashSet<String> = env::args().collect();
@@ -112,8 +114,8 @@ fn run_experiments(args: &HashSet<String>, training_images: Vec<(u8,Image)>, tes
         errors: BTreeMap::new()
     };
 
-    data.add_descriptor(BRIEF, brief::Descriptor::classic_gaussian_brief(8192, mnist_data::IMAGE_DIMENSION, mnist_data::IMAGE_DIMENSION));
-    data.add_descriptor(UNIFORM_BRIEF, brief::Descriptor::classic_uniform_brief(8192, mnist_data::IMAGE_DIMENSION, mnist_data::IMAGE_DIMENSION));
+    data.add_descriptor(BRIEF, brief::Descriptor::classic_gaussian_brief(CLASSIC_BRIEF_PAIRS, mnist_data::IMAGE_DIMENSION, mnist_data::IMAGE_DIMENSION));
+    data.add_descriptor(UNIFORM_BRIEF, brief::Descriptor::classic_uniform_brief(CLASSIC_BRIEF_PAIRS, mnist_data::IMAGE_DIMENSION, mnist_data::IMAGE_DIMENSION));
     data.add_descriptor(UNIFORM_NEIGHBORS, brief::Descriptor::uniform_neighbor(NUM_NEIGHBORS, mnist_data::IMAGE_DIMENSION, mnist_data::IMAGE_DIMENSION));
     data.add_descriptor(GAUSSIAN_NEIGHBORS, brief::Descriptor::gaussian_neighbor(NUM_NEIGHBORS, mnist_data::IMAGE_DIMENSION / 3, mnist_data::IMAGE_DIMENSION, mnist_data::IMAGE_DIMENSION));
     data.add_descriptor(GAUSSIAN_7, brief::Descriptor::gaussian_neighbor(NUM_NEIGHBORS, mnist_data::IMAGE_DIMENSION / 7, mnist_data::IMAGE_DIMENSION, mnist_data::IMAGE_DIMENSION));
@@ -229,6 +231,10 @@ impl ExperimentData {
         }
         if args.contains(BRIEF_CONVOLUTIONAL) {
             self.build_and_test_model(BRIEF_CONVOLUTIONAL, |img| brief_convolutional::to_kernelized(img, 2, 2), brief_convolutional::kernelized_distance);
+        }
+        if args.contains(BRIEF_MAJORITY) {
+            let descriptor = self.get_descriptor(UNIFORM_BRIEF);
+            self.build_and_test_model(BRIEF_MAJORITY, |img| descriptor.majority_image(img), bits::real_distance);
         }
     }
 
