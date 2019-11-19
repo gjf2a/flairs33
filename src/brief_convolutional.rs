@@ -2,7 +2,6 @@ use crate::bits::BitArray;
 use crate::mnist_data::{Grid, Image, add_subgrid_of};
 use crate::patch::patchify;
 use crate::{kmeans, bits};
-use decorum::R64;
 use crate::hash_histogram::HashHistogram;
 //use crate::brief::Descriptor;
 
@@ -35,10 +34,10 @@ pub fn to_kernelized(img: &Image, levels: usize, num_kernels: usize) -> Vec<BitI
     kernelized
 }
 
-pub fn kernelized_distance(k1: &Vec<BitImage>, k2: &Vec<BitImage>) -> R64 {
+pub fn kernelized_distance(k1: &Vec<BitImage>, k2: &Vec<BitImage>) -> u32 {
     assert_eq!(k1.len(), k2.len());
     (0..k1.len())
-        .map(|i| real_distance(&k1[i], &k2[i]))
+        .map(|i| distance(&k1[i], &k2[i]))
         .sum()
 }
 
@@ -106,24 +105,20 @@ impl BitImage {
         let candidates: Vec<BitImage> = self.x_y_iter()
             .map(|(x, y)| self.subimage(x, y, KERNEL_SIZE))
             .collect();
-        kmeans::Kmeans::new(num_kernels, &candidates, real_distance, image_mean).move_means()
+        kmeans::Kmeans::new(num_kernels, &candidates, distance, image_mean).move_means()
     }
 
     pub fn project_through(&self, kernel: &BitImage, stride: usize) -> BitImage {
         let mut result = BitImage::new();
         self.x_y_step_iter(stride).for_each(|(x, y)| {
             let sub = self.subimage(x, y, KERNEL_SIZE);
-            result.add(distance(&sub, kernel) > kernel.len() / 2);
+            result.add(distance(&sub, kernel) > (kernel.len() / 2) as u32);
         });
         result
     }
 }
 
-pub fn real_distance(img1: &BitImage, img2: &BitImage) -> R64 {
-    bits::real_distance(&img1.pixels, &img2.pixels)
-}
-
-pub fn distance(img1: &BitImage, img2: &BitImage) -> usize {
+pub fn distance(img1: &BitImage, img2: &BitImage) -> u32 {
     bits::distance(&img1.pixels, &img2.pixels)
 }
 

@@ -2,14 +2,17 @@ use decorum::R64;
 use rand::thread_rng;
 use rand::distributions::{Distribution, Uniform, WeightedIndex};
 
+#[allow(unused_imports)]
+use decorum::Real; // TODO: Report bug. Not needed to compile. Solely to satisfy the IntelliJ type checker.
+
 #[allow(dead_code)] // distance is only used in the test code, for now, as it is used strictly as a parameter during initialization.
-pub struct Kmeans<T, D: Fn(&T,&T) -> R64> {
+pub struct Kmeans<T, V: Copy + Eq + Ord, D: Fn(&T,&T) -> V> {
     means: Vec<T>,
     distance: D
 }
 
-impl <T: Clone + Eq, D: Fn(&T,&T) -> R64> Kmeans<T,D> {
-    pub fn new<M: Fn(&Vec<T>) -> T>(k: usize, data: &Vec<T>, distance: D, mean: M) -> Kmeans<T,D> {
+impl <T: Clone + Eq, V: Copy + Eq + Ord + Into<f64>, D: Fn(&T,&T) -> V> Kmeans<T,V,D> {
+    pub fn new<M: Fn(&Vec<T>) -> T>(k: usize, data: &Vec<T>, distance: D, mean: M) -> Kmeans<T,V,D> {
         Kmeans {means: kmeans_iterate(k, data, &distance, &mean), distance: distance}
     }
 
@@ -27,14 +30,14 @@ impl <T: Clone + Eq, D: Fn(&T,&T) -> R64> Kmeans<T,D> {
     pub fn move_means(self) -> Vec<T> {self.means}
 }
 
-fn initial_plus_plus<T: Clone + Eq, D: Fn(&T,&T) -> R64>(k: usize, distance: &D, data: &Vec<T>) -> Vec<T> {
+fn initial_plus_plus<T: Clone + Eq, V: Copy + Eq + Ord + Into<f64>, D: Fn(&T,&T) -> V>(k: usize, distance: &D, data: &Vec<T>) -> Vec<T> {
     let mut result = Vec::new();
     let mut rng = thread_rng();
     let range = Uniform::new(0, data.len());
     result.push(data[range.sample(&mut rng)].clone());
     while result.len() < k {
         let squared_distances: Vec<f64> = data.iter()
-            .map(|d| 1.0 + distance(d, result.last().unwrap()).into_inner().powf(2.0))
+            .map(|datum| 1.0 + distance(datum, result.last().unwrap()).into().powf(2.0))
             .collect();
         let dist = WeightedIndex::new(&squared_distances).unwrap();
         result.push(data[dist.sample(&mut rng)].clone());
@@ -42,7 +45,7 @@ fn initial_plus_plus<T: Clone + Eq, D: Fn(&T,&T) -> R64>(k: usize, distance: &D,
     result
 }
 
-fn kmeans_iterate<T: Clone + Eq, D: Fn(&T,&T) -> R64, M: Fn(&Vec<T>) -> T>(k: usize, data: &Vec<T>, distance: &D, mean: &M) -> Vec<T> {
+fn kmeans_iterate<T: Clone + Eq, V: Copy + Eq + Ord + Into<f64>, D: Fn(&T,&T) -> V, M: Fn(&Vec<T>) -> T>(k: usize, data: &Vec<T>, distance: &D, mean: &M) -> Vec<T> {
     let mut result = initial_plus_plus(k, distance, data);
     loop {
         let mut classifications: Vec<Vec<T>> = (0..k).map(|_| Vec::new()).collect();
@@ -66,9 +69,9 @@ fn kmeans_iterate<T: Clone + Eq, D: Fn(&T,&T) -> R64, M: Fn(&Vec<T>) -> T>(k: us
     }
 }
 
-fn classify<T: Clone + Eq, D: Fn(&T,&T) -> R64>(target: &T, means: &Vec<T>, distance: &D) -> usize {
+fn classify<T: Clone + Eq, V: Copy + Eq + Ord + Into<f64>, D: Fn(&T,&T) -> V>(target: &T, means: &Vec<T>, distance: &D) -> usize {
     let distances: Vec<(R64,usize)> = (0..means.len())
-        .map(|i| (distance(&target, &means[i]), i))
+        .map(|i| (R64::from_inner(distance(&target, &means[i]).into()), i))
         .collect();
     distances.iter().min().unwrap().1
 }

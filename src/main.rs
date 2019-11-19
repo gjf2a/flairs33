@@ -17,7 +17,6 @@ use std::io;
 use crate::training_harness::Classifier;
 use crate::pyramid::Pyramid;
 use crate::mnist_data::Image;
-use decorum::R64;
 use std::env;
 use std::collections::{HashSet, BTreeMap, HashMap};
 use crate::brief::Descriptor;
@@ -167,12 +166,12 @@ pub struct ExperimentData {
 }
 
 impl ExperimentData {
-    pub fn build_and_test_model<I: Clone, C: Fn(&Image) -> I, D: Fn(&I,&I) -> R64>
+    pub fn build_and_test_model<I: Clone, M: Copy + Eq + Ord, C: Fn(&Image) -> I, D: Fn(&I,&I) -> M>
     (&mut self, label: &str, conversion: C, distance: D) {
         self.build_and_test_converting_all(label, |v| convert_all(v, &conversion), distance);
     }
 
-    pub fn build_and_test_converting_all<I: Clone, C: Fn(&Vec<(u8,Image)>) -> Vec<(u8,I)>, D: Fn(&I,&I) -> R64>
+    pub fn build_and_test_converting_all<I: Clone, M: Copy + Eq + Ord, C: Fn(&Vec<(u8,Image)>) -> Vec<(u8,I)>, D: Fn(&I,&I) -> M>
     (&mut self, label: &str, conversion: C, distance: D) {
         let training_images = print_time_milliseconds(&format!("converting training images to {}", label),
                                                       || conversion(&self.training));
@@ -234,17 +233,17 @@ impl ExperimentData {
         }
         if args.contains(BRIEF_MAJORITY) {
             let descriptor = self.get_descriptor(UNIFORM_BRIEF);
-            self.build_and_test_model(BRIEF_MAJORITY, |img| descriptor.majority_image(img), bits::real_distance);
+            self.build_and_test_model(BRIEF_MAJORITY, |img| descriptor.majority_image(img), bits::distance);
         }
     }
 
     fn build_and_test_descriptor(&mut self, descriptor_name: &str) {
         let descriptor = self.get_descriptor(descriptor_name);
-        self.build_and_test_model(descriptor_name, |img| descriptor.apply_to(img), bits::real_distance);
+        self.build_and_test_model(descriptor_name, |img| descriptor.apply_to(img), bits::distance);
     }
 
     fn build_and_test_patch(&mut self, label: &str, patch_size: usize) {
-        self.build_and_test_model(label, |img| patchify(img, patch_size), bits::real_distance);
+        self.build_and_test_model(label, |img| patchify(img, patch_size), bits::distance);
     }
 
     pub fn permuted(&self, permutation: &Vec<usize>) -> ExperimentData {

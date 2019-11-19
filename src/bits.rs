@@ -1,34 +1,8 @@
 use std::ops::BitXor;
-use decorum::R64;
 #[cfg(test)]
 use bitvec::prelude::*;
 
 const NUM_BITS: u64 = 64;
-
-const LOOKUP_8_BIT: [u8; 256] = [0, 1, 1, 2, 1, 2, 2, 3, 1, 2, 2, 3, 2, 3, 3, 4, 1, 2, 2, 3, 2, 3, 3, 4, 2, 3, 3, 4, 3, 4, 4, 5, 1, 2, 2, 3, 2, 3, 3, 4, 2, 3, 3, 4, 3, 4, 4, 5, 2, 3, 3, 4, 3, 4, 4, 5, 3, 4, 4, 5, 4, 5, 5, 6, 1, 2, 2, 3, 2, 3, 3, 4, 2, 3, 3, 4, 3, 4, 4, 5, 2, 3, 3, 4, 3, 4, 4, 5, 3, 4, 4, 5, 4, 5, 5, 6, 2, 3, 3, 4, 3, 4, 4, 5, 3, 4, 4, 5, 4, 5, 5, 6, 3, 4, 4, 5, 4, 5, 5, 6, 4, 5, 5, 6, 5, 6, 6, 7, 1, 2, 2, 3, 2, 3, 3, 4, 2, 3, 3, 4, 3, 4, 4, 5, 2, 3, 3, 4, 3, 4, 4, 5, 3, 4, 4, 5, 4, 5, 5, 6, 2, 3, 3, 4, 3, 4, 4, 5, 3, 4, 4, 5, 4, 5, 5, 6, 3, 4, 4, 5, 4, 5, 5, 6, 4, 5, 5, 6, 5, 6, 6, 7, 2, 3, 3, 4, 3, 4, 4, 5, 3, 4, 4, 5, 4, 5, 5, 6, 3, 4, 4, 5, 4, 5, 5, 6, 4, 5, 5, 6, 5, 6, 6, 7, 3, 4, 4, 5, 4, 5, 5, 6, 4, 5, 5, 6, 5, 6, 6, 7, 4, 5, 5, 6, 5, 6, 6, 7, 5, 6, 6, 7, 6, 7, 7, 8];
-
-#[cfg(test)]
-pub fn log2(n: u64) -> u8 {
-    assert!(n >= 1);
-    let mut log = 0;
-    let mut n = n;
-    while n > 1 {
-        log += 1;
-        n >>= 1;
-    }
-    log
-}
-
-#[cfg(test)]
-pub fn num_bits(n: u64) -> u8 {
-    let mut bits = 0;
-    let mut leftover = n;
-    while leftover > 0 {
-        leftover -= 2_u64.pow(log2(leftover).into());
-        bits += 1;
-    }
-    bits
-}
 
 #[derive(Clone, Debug)]
 pub struct BitArray {
@@ -62,8 +36,8 @@ impl BitArray {
         self.bits[get_word(index)] & get_mask(index) > 0
     }
 
-    pub fn count_bits_on(&self) -> usize {
-        self.bits.iter().map(|word| count_lookup(*word) as usize).sum()
+    pub fn count_bits_on(&self) -> u32 {
+        self.bits.iter().map(|word| word.count_ones()).sum()
     }
 }
 
@@ -87,23 +61,8 @@ fn get_word(index: u64) -> usize {
     (index / NUM_BITS) as usize
 }
 
-fn count_lookup(value: u64) -> u8 {
-    let mut count = 0;
-    for i in 0..8 {
-        let shift = i * 8;
-        let mask: u64 = 0xFF << shift;
-        let bits = (value & mask) >> shift;
-        count += LOOKUP_8_BIT[bits as usize];
-    }
-    count
-}
-
-pub fn distance(b1: &BitArray, b2: &BitArray) -> usize {
+pub fn distance(b1: &BitArray, b2: &BitArray) -> u32 {
     (b1 ^ b2).count_bits_on()
-}
-
-pub fn real_distance(b1: &BitArray, b2: &BitArray) -> R64 {
-    R64::from_inner(distance(b1, b2) as f64)
 }
 
 impl BitXor for &BitArray {
@@ -187,25 +146,25 @@ mod tests {
         assert_eq!(1, num_bits(8));
     }
 
-    pub fn bool_vec_distance(bv1: &Vec<bool>, bv2: &Vec<bool>) -> R64 {
+    pub fn bool_vec_distance(bv1: &Vec<bool>, bv2: &Vec<bool>) -> usize {
         assert_eq!(bv1.len(), bv2.len());
-        R64::from_inner((0..bv1.len())
+        (0..bv1.len())
             .filter(|i| bv1[*i] != bv2[*i])
-            .count() as f64)
+            .count()
     }
 
-    pub fn bitvec_distance_1(bv1: &BitVec<BigEndian,u8>, bv2: &BitVec<BigEndian,u8>) -> R64 {
+    pub fn bitvec_distance_1(bv1: &BitVec<BigEndian,u8>, bv2: &BitVec<BigEndian,u8>) -> usize {
         assert_eq!(bv1.len(), bv2.len());
         let xor = bv1.clone() ^ bv2.clone();
-        R64::from_inner(xor.iter().filter(|b| *b).count() as f64)
+        xor.iter().filter(|b| *b).count()
     }
 
-    pub fn bitvec_distance_2(bv1: &BitVec<BigEndian,u8>, bv2: &BitVec<BigEndian,u8>) -> R64 {
+    pub fn bitvec_distance_2(bv1: &BitVec<BigEndian,u8>, bv2: &BitVec<BigEndian,u8>) -> usize {
         assert_eq!(bv1.len(), bv2.len());
-        R64::from_inner((0..bv1.len())
+        (0..bv1.len())
             .map(|i| bv1[i] != bv2[i])
             .filter(|b| *b)
-            .count() as f64)
+            .count()
     }
 
     #[test]
@@ -225,7 +184,7 @@ mod tests {
         baseline_2.iter().for_each(|b| bitvec_2.push(*b));
 
         let baseline_distance = print_time_milliseconds("baseline distance", || bool_vec_distance(&baseline_1, &baseline_2));
-        let bits_distance = print_time_milliseconds("bits distance", || real_distance(&bits_1, &bits_2));
+        let bits_distance = print_time_milliseconds("bits distance", || distance(&bits_1, &bits_2));
         let bitvec_distance_1 = print_time_milliseconds("bitvec distance 1", || bitvec_distance_1(&bitvec_1, &bitvec_2));
         let bitvec_distance_2 = print_time_milliseconds("bitvec distance 2", || bitvec_distance_2(&bitvec_1, &bitvec_2));
         assert_eq!(baseline_distance, bits_distance);
