@@ -31,7 +31,7 @@ const BASE_PATH: &str = "/Users/ferrer/Desktop/mnist_data/";
 const SHRINK_FACTOR: usize = 50;
 const K: usize = 7;
 const PATCH_SIZE: usize = 3;
-const NUM_NEIGHBORS: usize = 16;
+const NUM_NEIGHBORS: usize = 8;
 const CLASSIC_BRIEF_PAIRS: usize = mnist_data::IMAGE_DIMENSION * mnist_data::IMAGE_DIMENSION * NUM_NEIGHBORS;
 
 const HELP: &str = "help";

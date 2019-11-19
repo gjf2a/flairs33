@@ -11,7 +11,7 @@ use std::io::Read;
 #[cfg(test)]
 pub fn make_permutation(n: usize) -> Vec<usize> {
     let mut rng = thread_rng();
-    let mut indices: Vec<usize> = (0..n).collect();
+    let mut indices = (0..n).collect();
     indices.shuffle(&mut rng);
     indices
 }
