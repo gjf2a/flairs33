@@ -37,7 +37,7 @@ impl BitArray {
     }
 
     pub fn count_bits_on(&self) -> u32 {
-        self.bits.iter().map(|word| word.count_ones()).sum()
+        self.bits.iter().map(|word| word.count_ones() as u32).sum()
     }
 }
 
@@ -104,7 +104,7 @@ mod tests {
         for i in 1..b.len() {
             assert!(b.is_set(i));
         }
-        assert_eq!(b.len() as usize - 1, b.count_bits_on());
+        assert_eq!(b.len() as u32 - 1, b.count_bits_on());
 
         let mut b2 = BitArray::new();
         for i in 0..b.len() {
@@ -112,7 +112,7 @@ mod tests {
         }
 
         let b3 = &b ^ &b2;
-        assert_eq!((b.len() as usize / 2) + 1, b3.count_bits_on());
+        assert_eq!((b.len() as u32 / 2) + 1, b3.count_bits_on());
         assert_eq!(b3.count_bits_on(), distance(&b, &b2));
 
         assert_ne!(b, b2);
@@ -122,28 +122,6 @@ mod tests {
         assert_eq!(b, b.clone());
         assert_eq!(b2, b2.clone());
         assert_eq!(b3, b3.clone());
-    }
-
-    #[test]
-    fn test_log2() {
-        assert_eq!(1, log2(2));
-        assert_eq!(2, log2(4));
-        assert_eq!(3, log2(8));
-        assert_eq!(16, log2(65536));
-        assert_eq!(2, log2(7));
-        assert_eq!(3, log2(15));
-    }
-
-    #[test]
-    fn test_num_bits() {
-        assert_eq!(1, num_bits(1));
-        assert_eq!(1, num_bits(2));
-        assert_eq!(2, num_bits(3));
-        assert_eq!(1, num_bits(4));
-        assert_eq!(2, num_bits(5));
-        assert_eq!(2, num_bits(6));
-        assert_eq!(3, num_bits(7));
-        assert_eq!(1, num_bits(8));
     }
 
     pub fn bool_vec_distance(bv1: &Vec<bool>, bv2: &Vec<bool>) -> usize {
@@ -187,7 +165,7 @@ mod tests {
         let bits_distance = print_time_milliseconds("bits distance", || distance(&bits_1, &bits_2));
         let bitvec_distance_1 = print_time_milliseconds("bitvec distance 1", || bitvec_distance_1(&bitvec_1, &bitvec_2));
         let bitvec_distance_2 = print_time_milliseconds("bitvec distance 2", || bitvec_distance_2(&bitvec_1, &bitvec_2));
-        assert_eq!(baseline_distance, bits_distance);
+        assert_eq!(baseline_distance as u32, bits_distance);
         assert_eq!(baseline_distance, bitvec_distance_1);
         assert_eq!(baseline_distance, bitvec_distance_2);
     }
