@@ -10,6 +10,7 @@ Install the Rust programming language and compile the code using Cargo. Then run
 
 See the instructions at https://www.rust-lang.org/tools/install to set up Rust.
 
+Also, you will need to download the MNIST data set from http://yann.lecun.com/exdb/mnist/. When you unzip it on your machine, you will need to change the BASE_PATH variable on line 29 of main.rs to point to where you unzipped it, as that variable is currently hard-coded for my development machine.
 
 ## Authors
 
