@@ -35,11 +35,6 @@ pub trait Grid<T> {
     }
 }
 
-pub fn add_subgrid_of<T: Copy>(src: &dyn Grid<T>, dest: &mut dyn Grid<T>, default: T, x_center: usize, y_center: usize, side: usize) {
-    ImageIterator::centered(x_center as isize, y_center as isize, side as isize, side as isize, 1)
-        .for_each(|(x, y)| dest.add(src.option_get(x, y).unwrap_or(default)));
-}
-
 impl Grid<u8> for Image {
     fn add(&mut self, pixel: u8) {
         self.pixels.push(pixel);
