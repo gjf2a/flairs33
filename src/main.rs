@@ -42,6 +42,10 @@ const BASELINE: &str = "baseline";
 const PYRAMID: &str = "pyramid";
 const BRIEF: &str = "brief";
 const UNIFORM_BRIEF: &str = "uniform_brief";
+const EQUIDISTANT_BRIEF: &str = "equidistant_brief";
+const EQUIDISTANT_7: &str = "equidistant_7";
+const EQUIDISTANT_5: &str = "equidistant_5";
+const EQUIDISTANT_3: &str = "equidistant_3";
 const CONVOLUTIONAL_1: &str = "convolutional1";
 const PATCH: &str = "patch";
 const PATCH_7: &str = "patch_7";
@@ -68,17 +72,25 @@ fn help_message() {
     println!("\t{}: Use only 1 out of {} training/testing images", SHRINK, SHRINK_FACTOR);
     println!("\t{}: Use 1/50, 1/20, 1/10, 1/5, and 1/2 training/testing images", SEQ);
     println!("\nAlgorithmic options:");
-    println!("\t{}: straightforward knn", BASELINE);
-    println!("\t{}: knn with pyramid images", PYRAMID);
-    println!("\t{}: knn with gaussian BRIEF descriptors", BRIEF);
-    println!("\t{}: knn with uniform BRIEF descriptors", UNIFORM_BRIEF);
-    println!("\t{}: knn with uniform neighbor BRIEF", UNIFORM_NEIGHBORS);
-    println!("\t{}: knn with gaussian neighbor BRIEF (stdev 1/3 side)", GAUSSIAN_NEIGHBORS);
-    println!("\t{}: knn with gaussian neighbor BRIEF (stdev 1/7 side)", GAUSSIAN_7);
-    println!("\t{}: knn with convolutional patch 3x3 BRIEF descriptors", PATCH);
+    println!("The eight variants of the paper are given in order of appearance in Tables 1 and 2.");
+    println!("All variants describe a knn (k=7) distance function variation:");
+    println!("\t{}: Euclidean", BASELINE);
+    println!("\t{}: Convolutional Euclidean (1 level)", CONVOLUTIONAL_1);
+    println!("\t{}: Uniform Classical BRIEF descriptors", UNIFORM_BRIEF);
+    println!("\t{}: Gaussian Classical BRIEF descriptors", BRIEF);
+    println!("\t{}: 3x3 Neighbor BRIEF descriptors", PATCH);
+    println!("\t{}: Uniform neighbor BRIEF", UNIFORM_NEIGHBORS);
+    println!("\t{}: Gaussian neighbor BRIEF (stdev 1/3 side)", GAUSSIAN_NEIGHBORS);
+    println!("\t{}: Gaussian neighbor BRIEF (stdev 1/7 side)", GAUSSIAN_7);
+    println!();
+    println!("The options below were not discussed in the paper:");
     println!("\t{}: knn with convolutional patch 7x7 BRIEF descriptors", PATCH_7);
     println!("\t{}: knn with BRIEF 3x3 convolutional patch and projected filters", BRIEF_CONVOLUTIONAL);
-    println!("\t{}: knn with convolutional distance metric (1 level)", CONVOLUTIONAL_1);
+    println!("\t{}: knn with BRIEF descriptor patches diagonally halfway across the image from each pixel", EQUIDISTANT_BRIEF);
+    println!("\t{}: knn with BRIEF descriptor patches diagonally 7 pixels from each pixel", EQUIDISTANT_7);
+    println!("\t{}: knn with BRIEF descriptor patches diagonally 5 pixels from each pixel", EQUIDISTANT_5);
+    println!("\t{}: knn with BRIEF descriptor patches diagonally 3 pixels from each pixel", EQUIDISTANT_3);
+    println!("\t{}: knn with pyramid images", PYRAMID);
 }
 
 fn train_and_test(args: &HashSet<String>) -> io::Result<()> {
@@ -118,6 +130,10 @@ fn run_experiments(args: &HashSet<String>, training_images: Vec<(u8,Image)>, tes
     data.add_descriptor(UNIFORM_NEIGHBORS, brief::Descriptor::uniform_neighbor(NUM_NEIGHBORS, mnist_data::IMAGE_DIMENSION, mnist_data::IMAGE_DIMENSION));
     data.add_descriptor(GAUSSIAN_NEIGHBORS, brief::Descriptor::gaussian_neighbor(NUM_NEIGHBORS, mnist_data::IMAGE_DIMENSION / 3, mnist_data::IMAGE_DIMENSION, mnist_data::IMAGE_DIMENSION));
     data.add_descriptor(GAUSSIAN_7, brief::Descriptor::gaussian_neighbor(NUM_NEIGHBORS, mnist_data::IMAGE_DIMENSION / 7, mnist_data::IMAGE_DIMENSION, mnist_data::IMAGE_DIMENSION));
+    data.add_descriptor(EQUIDISTANT_BRIEF, brief::Descriptor::equidistant(mnist_data::IMAGE_DIMENSION, mnist_data::IMAGE_DIMENSION, mnist_data::IMAGE_DIMENSION / 2, mnist_data::IMAGE_DIMENSION / 2));
+    data.add_descriptor(EQUIDISTANT_7, brief::Descriptor::equidistant(mnist_data::IMAGE_DIMENSION, mnist_data::IMAGE_DIMENSION, 7, 7));
+    data.add_descriptor(EQUIDISTANT_5, brief::Descriptor::equidistant(mnist_data::IMAGE_DIMENSION, mnist_data::IMAGE_DIMENSION, 5, 5));
+    data.add_descriptor(EQUIDISTANT_3, brief::Descriptor::equidistant(mnist_data::IMAGE_DIMENSION, mnist_data::IMAGE_DIMENSION, 3, 3));
 
     data.run_all_tests_with(&args);
 
@@ -218,6 +234,18 @@ impl ExperimentData {
         }
         if args.contains(GAUSSIAN_7) {
             self.build_and_test_descriptor(GAUSSIAN_7);
+        }
+        if args.contains(EQUIDISTANT_BRIEF) {
+            self.build_and_test_descriptor(EQUIDISTANT_BRIEF);
+        }
+        if args.contains(EQUIDISTANT_7) {
+            self.build_and_test_descriptor(EQUIDISTANT_7);
+        }
+        if args.contains(EQUIDISTANT_5) {
+            self.build_and_test_descriptor(EQUIDISTANT_5);
+        }
+        if args.contains(EQUIDISTANT_3) {
+            self.build_and_test_descriptor(EQUIDISTANT_3);
         }
         if args.contains(PATCH) {
             self.build_and_test_patch(PATCH, PATCH_SIZE);

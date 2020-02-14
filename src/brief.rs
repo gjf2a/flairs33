@@ -75,6 +75,15 @@ impl Descriptor {
         result
     }
 
+    pub fn equidistant(width: usize, height: usize, x_offset: usize, y_offset: usize) -> Descriptor {
+        let mut result = Descriptor {pairs: Vec::new(), width: width, height: height};
+        ImageIterator::new(0, 0, width, height, 1)
+            .for_each(|(x, y)|
+                result.pairs.push(((x, y), ((x + x_offset) % width, ((y + y_offset) % height))))
+            );
+        result
+    }
+
     pub fn width(&self) -> usize {
         self.width
     }
