@@ -4,14 +4,14 @@ use bitvec::prelude::*;
 
 const NUM_BITS: u64 = 64;
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, Default)]
 pub struct BitArray {
     bits: Vec<u64>,
     size: u64
 }
 
 impl BitArray {
-    pub fn new() -> BitArray { BitArray {bits: Vec::new(), size: 0}}
+    pub fn new() -> Self { Default::default() }
 
     pub fn len(&self) -> u64 {self.size}
 

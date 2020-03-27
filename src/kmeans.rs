@@ -12,8 +12,8 @@ pub struct Kmeans<T, V: Copy + Eq + Ord, D: Fn(&T,&T) -> V> {
 }
 
 impl <T: Clone + Eq, V: Copy + Eq + Ord + Into<f64>, D: Fn(&T,&T) -> V> Kmeans<T,V,D> {
-    pub fn new<M: Fn(&Vec<T>) -> T>(k: usize, data: &Vec<T>, distance: D, mean: M) -> Kmeans<T,V,D> {
-        Kmeans {means: kmeans_iterate(k, data, &distance, &mean), distance: distance}
+    pub fn new<M: Fn(&Vec<T>) -> T>(k: usize, data: &[T], distance: D, mean: M) -> Kmeans<T,V,D> {
+        Kmeans {means: kmeans_iterate(k, data, &distance, &mean), distance}
     }
 
     #[cfg(test)]
@@ -30,7 +30,7 @@ impl <T: Clone + Eq, V: Copy + Eq + Ord + Into<f64>, D: Fn(&T,&T) -> V> Kmeans<T
     pub fn move_means(self) -> Vec<T> {self.means}
 }
 
-fn initial_plus_plus<T: Clone + Eq, V: Copy + Eq + Ord + Into<f64>, D: Fn(&T,&T) -> V>(k: usize, distance: &D, data: &Vec<T>) -> Vec<T> {
+fn initial_plus_plus<T: Clone + Eq, V: Copy + Eq + Ord + Into<f64>, D: Fn(&T,&T) -> V>(k: usize, distance: &D, data: &[T]) -> Vec<T> {
     let mut result = Vec::new();
     let mut rng = thread_rng();
     let range = Uniform::new(0, data.len());
@@ -45,7 +45,7 @@ fn initial_plus_plus<T: Clone + Eq, V: Copy + Eq + Ord + Into<f64>, D: Fn(&T,&T)
     result
 }
 
-fn kmeans_iterate<T: Clone + Eq, V: Copy + Eq + Ord + Into<f64>, D: Fn(&T,&T) -> V, M: Fn(&Vec<T>) -> T>(k: usize, data: &Vec<T>, distance: &D, mean: &M) -> Vec<T> {
+fn kmeans_iterate<T: Clone + Eq, V: Copy + Eq + Ord + Into<f64>, D: Fn(&T,&T) -> V, M: Fn(&Vec<T>) -> T>(k: usize, data: &[T], distance: &D, mean: &M) -> Vec<T> {
     let mut result = initial_plus_plus(k, distance, data);
     loop {
         let mut classifications: Vec<Vec<T>> = (0..k).map(|_| Vec::new()).collect();
@@ -56,7 +56,7 @@ fn kmeans_iterate<T: Clone + Eq, V: Copy + Eq + Ord + Into<f64>, D: Fn(&T,&T) ->
         let prev = result;
         result = (0..k)
             .map(|i|
-                if classifications[i].len() > 0 {
+                if !classifications[i].is_empty() {
                     mean(&classifications[i])
                 } else {
                     prev[i].clone()

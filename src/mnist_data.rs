@@ -6,7 +6,7 @@ use std::ops::{AddAssign, Add};
 pub const IMAGE_DIMENSION: usize = 28;
 pub const IMAGE_BYTES: usize = IMAGE_DIMENSION * IMAGE_DIMENSION;
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, Default)]
 pub struct Image {
     pixels: Vec<u8>,
     side_size: usize,
@@ -58,8 +58,8 @@ impl Grid<u8> for Image {
 }
 
 impl Image {
-    pub fn new() -> Image {
-        Image {pixels: Vec::new(), side_size: 0}
+    pub fn new() -> Self {
+        Default::default()
     }
 
     #[cfg(test)]
@@ -69,7 +69,7 @@ impl Image {
         result
     }
 
-    pub fn permuted(&self, permutation: &Vec<usize>) -> Image {
+    pub fn permuted(&self, permutation: &[usize]) -> Image {
         assert_eq!(self.pixels.len(), permutation.len());
         let mut result = Image::new();
         for index in permutation {
@@ -121,7 +121,7 @@ impl PartialEq for Image {
 impl Eq for Image {}
 
 pub fn image_mean(images: &Vec<Image>) -> Image {
-    assert!(images.len() > 0);
+    assert!(!images.is_empty());
     assert!(images.iter().all(|img| img.pixels.len() == images[0].pixels.len()));
     let mut sums: Vec<usize> = (0..images[0].pixels.len()).map(|_| 0).collect();
     for image in images.iter() {
@@ -149,7 +149,7 @@ pub struct ImageIterator<N> {
 
 impl<N: Copy> ImageIterator<N> {
     pub fn new(x: N, y: N, width: N, height: N, stride: N) -> ImageIterator<N> {
-        ImageIterator {x: x, y: y, width: width, height: height, x_start: x, y_start: y, stride: stride}
+        ImageIterator {x, y, width, height, x_start: x, y_start: y, stride}
     }
 }
 
@@ -182,7 +182,7 @@ pub fn init_from_files(image_file_name: &str, label_file_name: &str) -> io::Resu
     read_image_file(image_file_name, &bytes)
 }
 
-pub fn discard(items: &Vec<(u8,Image)>, shrink: usize) -> Vec<(u8,Image)> {
+pub fn discard(items: &[(u8,Image)], shrink: usize) -> Vec<(u8,Image)> {
     let mut result: Vec<(u8,Image)> = Vec::new();
     for i in 0..items.len() {
         if i % shrink == 0 {
@@ -207,7 +207,7 @@ fn read_label_file(label_file_name: &str) -> io::Result<Vec<u8>> {
     Ok(bytes)
 }
 
-fn read_image_file(image_file_name: &str, labels: &Vec<u8>) -> io::Result<Vec<(u8,Image)>> {
+fn read_image_file(image_file_name: &str, labels: &[u8]) -> io::Result<Vec<(u8,Image)>> {
     let fin = fs::File::open(image_file_name)?;
     let mut images: Vec<(u8,Image)> = Vec::new();
     let mut image: Image = Image::new();

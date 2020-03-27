@@ -38,7 +38,7 @@ impl<K: Hash + Eq + Copy> HashHistogram<K> {
 
 impl<K: Hash + Eq + Copy + std::cmp::Ord + fmt::Display> fmt::Display for HashHistogram<K> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        let mut in_order: Vec<K> = self.all_labels().iter().map(|k| *k).collect();
+        let mut in_order: Vec<K> = self.all_labels().iter().copied().collect();
         in_order.sort();
         for label in in_order {
             write!(f, "{}:{}; ", label, self.get(label))?;

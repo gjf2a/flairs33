@@ -10,7 +10,7 @@ pub struct Knn<I, M, D: Fn(&I,&I) -> M> {
 
 impl<I, M, D: Fn(&I,&I) -> M> Knn<I, M, D> {
     pub fn new(k: usize, distance: D) -> Knn<I, M, D> {
-        Knn {k: k, images: Vec::new(), distance: distance}
+        Knn {k, images: Vec::new(), distance}
     }
 
     pub fn add_example(&mut self, img: (u8, I)) {
@@ -33,9 +33,12 @@ impl<I: Clone, M: Copy + Eq + Ord, D: Fn(&I,&I) -> M> Classifier<I> for Knn<I, M
         distances.sort();
 
         let mut labels = HashHistogram::new();
-        for i in 0..self.k {
-            labels.bump(distances[i].1);
+        for item in distances.iter().take(self.k) {
+            labels.bump(item.1);
         }
+        /*for i in 0..self.k {
+            labels.bump(distances[i].1);
+        }*/
         labels.mode()
     }
 }

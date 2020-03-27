@@ -24,7 +24,7 @@ impl Descriptor {
         let mut rng = rand::thread_rng();
         let x_dist = Normal::new((width/2) as f64, (width/6) as f64).unwrap();
         let y_dist = Normal::new((height/2) as f64, (height/6) as f64).unwrap();
-        let mut result = Descriptor {pairs: Vec::new(), width: width, height: height};
+        let mut result = Descriptor {pairs: Vec::new(), width, height};
         for _ in 0..n {
             result.pairs.push(((constrained_random(&x_dist, &mut rng, width),
                                 constrained_random(&y_dist, &mut rng, height)),
@@ -38,7 +38,7 @@ impl Descriptor {
         let mut rng = rand::thread_rng();
         let x_dist = Uniform::new(0, width);
         let y_dist = Uniform::new(0, height);
-        let mut result = Descriptor {pairs: Vec::new(), width: width, height: height};
+        let mut result = Descriptor {pairs: Vec::new(), width, height};
         for _ in 0..n {
             result.pairs.push(((x_dist.sample(&mut rng), y_dist.sample(&mut rng)),
                               (x_dist.sample(&mut rng), y_dist.sample(&mut rng))));
@@ -50,7 +50,7 @@ impl Descriptor {
         let mut rng = rand::thread_rng();
         let x_dist = Uniform::new(0, width);
         let y_dist = Uniform::new(0, height);
-        let mut result = Descriptor {pairs: Vec::new(), width: width, height: height};
+        let mut result = Descriptor {pairs: Vec::new(), width, height};
         ImageIterator::new(0, 0, width, height, 1)
             .for_each(|(x, y)|
                 for _ in 0..neighbors {
@@ -62,7 +62,7 @@ impl Descriptor {
     pub fn gaussian_neighbor(neighbors: usize, stdev: usize, width: usize, height: usize) -> Descriptor {
         let x_dist = Normal::new(0 as f64, stdev as f64).unwrap();
         let y_dist = Normal::new(0 as f64, stdev as f64).unwrap();
-        let mut result = Descriptor {pairs: Vec::new(), width: width, height: height};
+        let mut result = Descriptor {pairs: Vec::new(), width, height};
         ImageIterator::new(0, 0, width, height, 1)
             .for_each(|(x, y)|
                 for _ in 0..neighbors {
@@ -76,7 +76,7 @@ impl Descriptor {
     }
 
     pub fn equidistant(width: usize, height: usize, x_offset: usize, y_offset: usize) -> Descriptor {
-        let mut result = Descriptor {pairs: Vec::new(), width: width, height: height};
+        let mut result = Descriptor {pairs: Vec::new(), width, height};
         ImageIterator::new(0, 0, width, height, 1)
             .for_each(|(x, y)|
                 result.pairs.push(((x, y), ((x + x_offset) % width, ((y + y_offset) % height))))
@@ -127,18 +127,18 @@ pub fn random_bounded_normal_value(dist: &Normal<f64>, start_value: usize, min: 
     let max_diff = max - start_value;
 
     if sample < min_diff && sample < max_diff {
-        return if rand::random() {
+        if rand::random() {
             start_value + sample
         } else {
             start_value - sample
         }
     } else if sample < min_diff {
-        return start_value - sample;
+        start_value - sample
     } else if sample < max_diff {
-        return start_value + sample;
+        start_value + sample
     } else if rand::random() {
-        return min;
+        min
     } else {
-        return max - 1;
+        max - 1
     }
 }

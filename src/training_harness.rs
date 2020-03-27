@@ -28,7 +28,7 @@ impl ConfusionMatrix {
     pub fn all_labels(&self) -> HashSet<u8> {
         self.label_2_wrong.all_labels()
             .union(&self.label_2_right.all_labels())
-            .map(|label| *label)
+            .copied()
             .collect()
     }
 
@@ -41,7 +41,7 @@ impl ConfusionMatrix {
 
 impl fmt::Display for ConfusionMatrix {
     fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
-        let mut ordered_labels: Vec<u8> = self.all_labels().iter().map(|n| *n).collect();
+        let mut ordered_labels: Vec<u8> = self.all_labels().iter().copied().collect();
         ordered_labels.sort_unstable();
         for label in ordered_labels {
             writeln!(f, "{}: {} correct, {} incorrect", label, self.label_2_right.get(label), self.label_2_wrong.get(label))?;
@@ -55,7 +55,7 @@ pub trait Classifier<I> {
 
     fn classify(&self, example: &I) -> u8;
 
-    fn test(&self, testing_images: &Vec<(u8,I)>) -> ConfusionMatrix {
+    fn test(&self, testing_images: &[(u8,I)]) -> ConfusionMatrix {
         let mut result = ConfusionMatrix::new();
         let mut count = 0;
         let twentieth = testing_images.len() / 20;
@@ -64,7 +64,7 @@ pub trait Classifier<I> {
             count += 1;
             if count % twentieth == 0 {
                 print!("{}%; ", count * 5 / twentieth);
-                io::stdout().flush().ok().expect("Could not flush stdout");
+                io::stdout().flush().expect("Could not flush stdout");
             }
         }
         println!();

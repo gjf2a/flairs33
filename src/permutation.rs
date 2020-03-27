@@ -30,7 +30,7 @@ pub fn read_permutation(filename: &str) -> io::Result<Vec<usize>> {
     let mut file = File::open(filename)?;
     let mut contents = String::new();
     file.read_to_string(&mut contents)?;
-    Ok(contents.split(",")
+    Ok(contents.split(',')
         .map(|n| n.parse())
         .filter_map(Result::ok)
         .collect())

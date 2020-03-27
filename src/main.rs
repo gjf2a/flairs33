@@ -91,7 +91,7 @@ fn train_and_test(args: &HashSet<String>) -> io::Result<()> {
             testing_images = mnist_data::discard(&testing_images, SHRINK_FACTOR);
         }
 
-        run_experiments(args, training_images.clone(), testing_images.clone())?;
+        run_experiments(args, training_images, testing_images)?;
     }
 
     Ok(())
