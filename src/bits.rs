@@ -1,5 +1,4 @@
 use std::ops::BitXor;
-#[cfg(test)]
 use bitvec::prelude::*;
 
 const NUM_BITS: u64 = 64;
